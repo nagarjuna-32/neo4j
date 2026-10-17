@@ -256,7 +256,7 @@ For project organization, presentation, and functional responsibility allocation
 ## 10. Project Structure
 
 ```text
-neo/
+Code-Brain-AI/
 ├── .env.example                  # Environment configuration template with placeholders
 ├── .gitignore                    # Git ignore file for secrets, caches, and environments
 ├── requirements.txt              # Pinned production Python dependencies
@@ -315,8 +315,8 @@ neo/
 
 1. **Clone the Repository:**
    ```powershell
-   git clone https://github.com/nagarjuna-32/neo4j.git
-   cd neo
+   git clone https://github.com/nagarjuna-32/neo4j.git Code-Brain-AI
+   cd Code-Brain-AI
    ```
 
 2. **Create and Activate a Virtual Environment:**
