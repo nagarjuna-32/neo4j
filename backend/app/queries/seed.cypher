@@ -68,7 +68,31 @@ MERGE (cUsers)-[:DEPENDS_ON]->(cAuth)
 MERGE (cAdmin)-[:DEPENDS_ON]->(cUsers)
 MERGE (cNotif)-[:DEPENDS_ON]->(cUsers);
 
-// 6. Create Technical Decision: DEC-101
+// 6. Source Files & Call Graphs
+MERGE (fAuthMw:File {id: 'FILE-AUTH-MW'})
+SET fAuthMw.path = 'backend/app/middleware/auth.py',
+    fAuthMw.language = 'python',
+    fAuthMw.project_id = 'PRJ-SENTINEL',
+    fAuthMw.is_synthetic = true;
+
+MERGE (fnVerifyRefresh:Function {id: 'FN-VERIFY-REFRESH'})
+SET fnVerifyRefresh.name = 'verify_refresh_token',
+    fnVerifyRefresh.signature = 'verify_refresh_token(token: str) -> TokenPayload',
+    fnVerifyRefresh.project_id = 'PRJ-SENTINEL',
+    fnVerifyRefresh.is_synthetic = true;
+
+MERGE (fnJwtDecode:Function {id: 'FN-JWT-DECODE'})
+SET fnJwtDecode.name = 'jwt.decode',
+    fnJwtDecode.signature = 'jwt.decode(token: str, key: str, algorithms: list[str])',
+    fnJwtDecode.project_id = 'PRJ-SENTINEL',
+    fnJwtDecode.is_synthetic = true;
+
+MERGE (p)-[:CONTAINS]->(fAuthMw);
+MERGE (cAuth)-[:CONTAINS]->(fAuthMw);
+MERGE (fAuthMw)-[:CONTAINS]->(fnVerifyRefresh);
+MERGE (fnVerifyRefresh)-[:CALLS]->(fnJwtDecode);
+
+// 7. Create Technical Decision: DEC-101
 MERGE (dec101:Decision {id: 'DEC-101'})
 SET dec101.title = 'Migrate session authentication to JWT',
     dec101.description = 'Replaced stateful server-side Redis sessions with stateless signed JWT bearer tokens for horizontal scalability and cross-service verification.',
@@ -87,7 +111,7 @@ SET rsn101.text = 'Support authenticated mobile clients and stateless API access
 MERGE (dec101)-[:JUSTIFIED_BY]->(rsn101);
 MERGE (cAuth)-[:AFFECTED_BY]->(dec101);
 
-// 7. Create Historical Bug: BUG-101
+// 8. Create Historical Bug: BUG-101
 MERGE (bug101:Bug {id: 'BUG-101'})
 SET bug101.title = 'Users API returns HTTP 401 after authentication refactor',
     bug101.symptom = 'Authenticated users receive unexpected 401 Unauthorized responses during legitimate session renewal.',
@@ -103,7 +127,7 @@ SET bug101.title = 'Users API returns HTTP 401 after authentication refactor',
 MERGE (cAuth)-[:HAS_BUG]->(bug101);
 MERGE (bug101)-[:RELATED_TO]->(dec101);
 
-// 8. Create Fix: FIX-101
+// 9. Create Fix: FIX-101
 MERGE (fix101:Fix {id: 'FIX-101'})
 SET fix101.title = 'Restore refresh-token middleware registration',
     fix101.description = 'Explicitly registered TokenValidationMiddleware before RouteDispatch in FastAPI lifespan and added token renewal handler.',
@@ -114,7 +138,7 @@ SET fix101.title = 'Restore refresh-token middleware registration',
 
 MERGE (bug101)-[:RESOLVED_BY]->(fix101);
 
-// 9. Create Regression Test: TEST-101
+// 10. Create Regression Test: TEST-101
 MERGE (test101:Test {id: 'TEST-101'})
 SET test101.title = 'test_refresh_token_validation_and_auth_flow',
     test101.description = 'Verifies refresh-token validation, expiry handling, and expected authentication behavior across Users API downstream paths.',
@@ -124,7 +148,7 @@ SET test101.title = 'test_refresh_token_validation_and_auth_flow',
 
 MERGE (fix101)-[:VERIFIED_BY]->(test101);
 
-// 10. Pull Requests & Developers
+// 11. Pull Requests & Developers
 MERGE (pr101:PullRequest {id: 'PR-101'})
 SET pr101.title = 'feat(auth): stateless JWT authentication architecture',
     pr101.status = 'MERGED',

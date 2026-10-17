@@ -117,7 +117,32 @@ class InMemoryGraphStore:
         self.add_edge("REL-ADMIN-USERS", "COMP-ADMIN", "COMP-USERS", "DEPENDS_ON")
         self.add_edge("REL-NOTIF-USERS", "COMP-NOTIF", "COMP-USERS", "DEPENDS_ON")
 
-        # 4. Technical Decision DEC-101
+        # 4. Files & Functions (Code-level call graph)
+        self.add_node("FILE-AUTH-MW", "File", ["File"], {
+            "path": "backend/app/middleware/auth.py",
+            "language": "python",
+            "project_id": "PRJ-SENTINEL",
+            "is_synthetic": True,
+        })
+        self.add_edge("REL-PRJ-FILE-AUTH", "PRJ-SENTINEL", "FILE-AUTH-MW", "CONTAINS")
+        self.add_edge("REL-COMP-FILE-AUTH", "COMP-AUTH", "FILE-AUTH-MW", "CONTAINS")
+
+        self.add_node("FN-VERIFY-REFRESH", "Function", ["Function"], {
+            "name": "verify_refresh_token",
+            "signature": "verify_refresh_token(token: str) -> TokenPayload",
+            "project_id": "PRJ-SENTINEL",
+            "is_synthetic": True,
+        })
+        self.add_node("FN-JWT-DECODE", "Function", ["Function"], {
+            "name": "jwt.decode",
+            "signature": "jwt.decode(token: str, key: str, algorithms: list[str])",
+            "project_id": "PRJ-SENTINEL",
+            "is_synthetic": True,
+        })
+        self.add_edge("REL-FILE-FN-REFRESH", "FILE-AUTH-MW", "FN-VERIFY-REFRESH", "CONTAINS")
+        self.add_edge("REL-FN-CALL-JWT", "FN-VERIFY-REFRESH", "FN-JWT-DECODE", "CALLS")
+
+        # 5. Technical Decision DEC-101
         self.add_node("DEC-101", "Decision", ["Decision"], {
             "title": "Migrate session authentication to JWT",
             "description": "Replaced stateful server-side Redis sessions with stateless signed JWT bearer tokens for horizontal scalability and cross-service verification.",
@@ -136,7 +161,7 @@ class InMemoryGraphStore:
         self.add_edge("REL-DEC101-RSN", "DEC-101", "RSN-101", "JUSTIFIED_BY")
         self.add_edge("REL-AUTH-DEC101", "COMP-AUTH", "DEC-101", "AFFECTED_BY")
 
-        # 5. Historical Bug BUG-101
+        # 6. Historical Bug BUG-101
         self.add_node("BUG-101", "Bug", ["Bug"], {
             "title": "Users API returns HTTP 401 after authentication refactor",
             "symptom": "Authenticated users receive unexpected 401 Unauthorized responses during legitimate session renewal.",
@@ -356,6 +381,8 @@ class GraphService:
                    OR (n:Test) 
                    OR (n:Fix) 
                    OR (n:Reason)
+                   OR (n:File)
+                   OR (n:Function)
                    OR (n:PullRequest)
                    OR (n:Developer)
                 OPTIONAL MATCH (n)-[r]->(m)
