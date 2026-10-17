@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DevGraph Sentinel — AI Engineering Memory & Change Impact Intelligence</title>
+  
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#ecfeff',
+              100: '#cffafe',
+              400: '#22d3ee',
+              500: '#06b6d4',
+              600: '#0891b2',
+              700: '#0e7490',
+            },
+            surface: {
+              900: '#0b0f19',
+              850: '#0f172a',
+              800: '#131e36',
+              750: '#182442',
+              700: '#1e293b',
+              600: '#334155',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Cytoscape.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+
+  <!-- Marked.js for markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    body {
+      background-color: #0b0f19;
+      color: #f1f5f9;
+      font-family: 'Inter', sans-serif;
+    }
+    #cy {
+      width: 100%;
+      height: 100%;
+      background-color: #0d1322;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+    .glow-cyan {
+      box-shadow: 0 0 20px -5px rgba(6, 182, 212, 0.25);
+    }
+    .glass-card {
+      background: rgba(19, 30, 54, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .markdown-content h3 { font-size: 1.15rem; font-weight: 700; color: #22d3ee; margin-top: 1rem; margin-bottom: 0.5rem; }
+    .markdown-content h4 { font-size: 1.0rem; font-weight: 600; color: #93c5fd; margin-top: 0.75rem; margin-bottom: 0.25rem; }
+    .markdown-content p { margin-bottom: 0.5rem; line-height: 1.5; color: #cbd5e1; }
+    .markdown-content ul { list-style-type: disc; margin-left: 1.25rem; margin-bottom: 0.5rem; color: #e2e8f0; }
+    .markdown-content ol { list-style-type: decimal; margin-left: 1.25rem; margin-bottom: 0.5rem; color: #e2e8f0; }
+    .markdown-content blockquote { border-left: 3px solid #06b6d4; padding-left: 0.75rem; color: #94a3b8; margin: 0.5rem 0; font-style: italic; background: rgba(6, 182, 212, 0.05); padding-top: 0.25rem; padding-bottom: 0.25rem; border-radius: 0 4px 4px 0; }
+    .markdown-content code { font-family: 'JetBrains Mono', monospace; background: #1e293b; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.85em; color: #38bdf8; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-[#0b0f19] text-slate-100 overflow-x-hidden">
+
+  <!-- Top Navigation Bar -->
+  <header class="border-b border-surface-700/80 bg-surface-900/90 backdrop-blur sticky top-0 z-40 px-4 lg:px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-cyan-600 to-blue-500 flex items-center justify-center shadow-lg shadow-cyan-500/20 text-white font-black text-xl">
+        <i data-lucide="shield-alert" class="w-5 h-5 text-white"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-cyan-100 to-cyan-400 bg-clip-text text-transparent">DevGraph Sentinel</span>
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800/80 uppercase tracking-wider">v1.0 Hackathon</span>
+        </div>
+        <p class="text-xs text-slate-400 hidden sm:block">Understand the past. Predict the impact. Prevent the next bug.</p>
+      </div>
+    </div>
+
+    <!-- Center Project Selector & Health Badges -->
+    <div class="hidden md:flex items-center gap-3">
+      <div class="flex items-center gap-2 bg-surface-800/90 border border-surface-700 px-3 py-1.5 rounded-lg text-xs">
+        <i data-lucide="folder-git-2" class="w-3.5 h-3.5 text-cyan-400"></i>
+        <span class="text-slate-400">Project:</span>
+        <span id="headerProjectName" class="font-semibold text-slate-200">Sentinel Demo App</span>
+      </div>
+
+      <!-- Neo4j Connection Pill -->
+      <div id="neo4jStatusBadge" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border bg-amber-950/40 border-amber-800/60 text-amber-300 cursor-pointer" onclick="openHealthModal()" title="Click to view database diagnostics">
+        <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+        <span id="neo4jStatusText">Graph: In-Memory Engine</span>
+      </div>
+
+      <!-- AI Status Pill -->
+      <div id="aiStatusBadge" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border bg-cyan-950/40 border-cyan-800/60 text-cyan-300 cursor-pointer" onclick="openHealthModal()" title="Click to view AI configuration">
+        <i data-lucide="sparkles" class="w-3 h-3 text-cyan-400"></i>
+        <span id="aiStatusText">AI: Deterministic Engine</span>
+      </div>
+    </div>
+
+    <!-- Right Action Buttons -->
+    <div class="flex items-center gap-2">
+      <button onclick="handleSeedDemo()" id="btnSeedDemo" class="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-surface-800 hover:bg-surface-700 border border-surface-600 text-slate-200 transition">
+        <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-cyan-400"></i>
+        <span>Seed Demo Graph</span>
+      </button>
+
+      <button onclick="openMemoryModal()" class="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-md shadow-cyan-900/30 transition">
+        <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+        <span>Capture Memory</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Summary Statistics Bar -->
+  <div class="bg-surface-850 border-b border-surface-700/60 px-4 lg:px-6 py-2.5 flex items-center justify-between text-xs overflow-x-auto gap-4 custom-scrollbar">
+    <div class="flex items-center gap-6 text-slate-300 whitespace-nowrap">
+      <div class="flex items-center gap-2">
+        <span class="text-slate-400">Total Nodes:</span>
+        <span id="statNodes" class="font-bold text-white bg-surface-750 px-2 py-0.5 rounded border border-surface-600">--</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-slate-400">Total Relationships:</span>
+        <span id="statEdges" class="font-bold text-white bg-surface-750 px-2 py-0.5 rounded border border-surface-600">--</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-slate-400">Components:</span>
+        <span id="statComponents" class="font-bold text-cyan-400 bg-surface-750 px-2 py-0.5 rounded border border-surface-600">--</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-slate-400">Recorded Incidents:</span>
+        <span id="statBugs" class="font-bold text-red-400 bg-surface-750 px-2 py-0.5 rounded border border-surface-600">--</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-slate-400">Technical Decisions:</span>
+        <span id="statDecisions" class="font-bold text-purple-400 bg-surface-750 px-2 py-0.5 rounded border border-surface-600">--</span>
+      </div>
+    </div>
+
+    <!-- Active Navigation Tabs -->
+    <div class="flex items-center gap-1 bg-surface-800 p-1 rounded-lg border border-surface-700 shrink-0">
+      <button onclick="switchTab('graph')" id="tabBtn-graph" class="tab-button px-3 py-1 rounded-md text-xs font-semibold bg-cyan-600 text-white transition flex items-center gap-1.5">
+        <i data-lucide="network" class="w-3.5 h-3.5"></i>
+        <span>Knowledge Graph</span>
+      </button>
+      <button onclick="switchTab('debug')" id="tabBtn-debug" class="tab-button px-3 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-1.5">
+        <i data-lucide="terminal" class="w-3.5 h-3.5"></i>
+        <span>Contextual Debugger</span>
+      </button>
+      <button onclick="switchTab('impact')" id="tabBtn-impact" class="tab-button px-3 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-1.5">
+        <i data-lucide="git-pull-request" class="w-3.5 h-3.5"></i>
+        <span>Change Impact</span>
+      </button>
+      <button onclick="switchTab('activity')" id="tabBtn-activity" class="tab-button px-3 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-1.5">
+        <i data-lucide="activity" class="w-3.5 h-3.5"></i>
+        <span>Activity Log</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Workspace Area -->
+  <main class="flex-1 flex overflow-hidden relative">
+
+    <!-- ================= TAB 1: KNOWLEDGE GRAPH EXPLORER ================= -->
+    <div id="tabContent-graph" class="tab-content flex-1 flex flex-col md:flex-row h-[calc(100vh-105px)] w-full">
+      
+      <!-- Graph Canvas Container -->
+      <div class="flex-1 relative h-full flex flex-col">
+        
+        <!-- Graph Control Floating Bar -->
+        <div class="absolute top-4 left-4 z-10 flex flex-wrap items-center gap-2 glass-card px-3 py-2 rounded-xl text-xs shadow-xl">
+          <div class="flex items-center gap-1 border-r border-slate-700 pr-2">
+            <button onclick="resetGraphLayout()" title="Recalculate layout" class="p-1.5 rounded hover:bg-surface-700 text-slate-300 hover:text-white transition">
+              <i data-lucide="layout-grid" class="w-4 h-4"></i>
+            </button>
+            <button onclick="fitGraph()" title="Fit graph to viewport" class="p-1.5 rounded hover:bg-surface-700 text-slate-300 hover:text-white transition">
+              <i data-lucide="maximize-2" class="w-4 h-4"></i>
+            </button>
+            <button onclick="zoomIn()" title="Zoom In" class="p-1.5 rounded hover:bg-surface-700 text-slate-300 hover:text-white transition">
+              <i data-lucide="zoom-in" class="w-4 h-4"></i>
+            </button>
+            <button onclick="zoomOut()" title="Zoom Out" class="p-1.5 rounded hover:bg-surface-700 text-slate-300 hover:text-white transition">
+              <i data-lucide="zoom-out" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <!-- Filter Pills -->
+          <div class="flex items-center gap-1 overflow-x-auto">
+            <button onclick="filterGraph('ALL')" id="filterBtn-ALL" class="filter-pill px-2.5 py-1 rounded-full text-[11px] font-semibold bg-cyan-600 text-white">All</button>
+            <button onclick="filterGraph('Component')" id="filterBtn-Component" class="filter-pill px-2 py-1 rounded-full text-[11px] font-medium bg-surface-700 text-cyan-300 hover:bg-surface-600">Components</button>
+            <button onclick="filterGraph('Decision')" id="filterBtn-Decision" class="filter-pill px-2 py-1 rounded-full text-[11px] font-medium bg-surface-700 text-purple-300 hover:bg-surface-600">Decisions</button>
+            <button onclick="filterGraph('Bug')" id="filterBtn-Bug" class="filter-pill px-2 py-1 rounded-full text-[11px] font-medium bg-surface-700 text-red-300 hover:bg-surface-600">Bugs</button>
+            <button onclick="filterGraph('Fix')" id="filterBtn-Fix" class="filter-pill px-2 py-1 rounded-full text-[11px] font-medium bg-surface-700 text-emerald-300 hover:bg-surface-600">Fixes</button>
+            <button onclick="filterGraph('Test')" id="filterBtn-Test" class="filter-pill px-2 py-1 rounded-full text-[11px] font-medium bg-surface-700 text-lime-300 hover:bg-surface-600">Tests</button>
+            <button onclick="filterGraph('Dependency')" id="filterBtn-Dependency" class="filter-pill px-2 py-1 rounded-full text-[11px] font-medium bg-surface-700 text-amber-300 hover:bg-surface-600">Deps</button>
+          </div>
+        </div>
+
+        <!-- Legend (Bottom-Left) -->
+        <div class="absolute bottom-4 left-4 z-10 glass-card p-3 rounded-xl text-[11px] shadow-xl max-w-xs hidden sm:block">
+          <div class="font-bold text-slate-300 mb-1.5 flex items-center justify-between">
+            <span>Graph Legend</span>
+            <span class="text-[10px] text-slate-500">Neo4j Schema</span>
+          </div>
+          <div class="grid grid-cols-2 gap-x-3 gap-y-1 text-slate-300">
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span> Project</div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span> Component</div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span> Decision</div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> Bug / Incident</div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Fix</div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-lime-400"></span> Test</div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Dependency</div>
+            <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-indigo-400"></span> PullRequest</div>
+          </div>
+        </div>
+
+        <!-- Cytoscape Target Container -->
+        <div id="cy" class="w-full h-full"></div>
+      </div>
+
+      <!-- Node Details Drawer / Side Panel -->
+      <aside id="nodeDetailsDrawer" class="w-full md:w-80 lg:w-96 border-l border-surface-700 bg-surface-850 p-4 flex flex-col justify-between overflow-y-auto custom-scrollbar">
+        <div>
+          <div class="flex items-center justify-between border-b border-surface-700 pb-3 mb-3">
+            <div class="flex items-center gap-2">
+              <i data-lucide="info" class="w-4 h-4 text-cyan-400"></i>
+              <h3 class="font-bold text-sm text-white">Entity Inspection</h3>
+            </div>
+            <span id="detailBadge" class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-surface-700 text-slate-300">Select a node</span>
+          </div>
+
+          <div id="detailEmptyState" class="py-12 text-center text-slate-500 text-xs">
+            <i data-lucide="mouse-pointer-click" class="w-8 h-8 mx-auto text-slate-600 mb-2"></i>
+            <p>Click on any node in the knowledge graph to view its properties, historical evidence, and connected relationships.</p>
+          </div>
+
+          <div id="detailContent" class="space-y-4 hidden text-xs">
+            <div>
+              <span class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Entity ID</span>
+              <p id="detailId" class="font-mono text-cyan-300 font-bold text-sm">--</p>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Name / Title</span>
+              <p id="detailTitle" class="text-slate-100 font-semibold text-sm">--</p>
+            </div>
+            <div>
+              <span class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Description / Details</span>
+              <p id="detailDesc" class="text-slate-300 leading-relaxed bg-surface-800 p-2.5 rounded border border-surface-700 mt-1">--</p>
+            </div>
+
+            <!-- Dynamic Properties Table -->
+            <div>
+              <span class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Properties</span>
+              <div id="detailPropsTable" class="mt-1 space-y-1 bg-surface-800 p-2 rounded border border-surface-700 max-h-48 overflow-y-auto custom-scrollbar">
+                <!-- Injected via JS -->
+              </div>
+            </div>
+
+            <!-- Connected Neighbors -->
+            <div>
+              <span class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Connected Neighbors (<span id="detailNeighborCount">0</span>)</span>
+              <div id="detailNeighborsList" class="mt-1 space-y-1.5 max-h-48 overflow-y-auto custom-scrollbar">
+                <!-- Injected via JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-4 border-t border-surface-700 mt-4 text-[11px] text-slate-500 flex items-center justify-between">
+          <span>Source: Live Neo4j Cypher</span>
+          <button onclick="askAboutSelectedNode()" id="btnAskNode" class="hidden text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1">
+            <span>Debug this</span>
+            <i data-lucide="arrow-right" class="w-3 h-3"></i>
+          </button>
+        </div>
+      </aside>
+    </div>
+
+    <!-- ================= TAB 2: CONTEXTUAL DEBUGGING ASSISTANT ================= -->
+    <div id="tabContent-debug" class="tab-content flex-1 hidden flex-col md:flex-row h-[calc(100vh-105px)] w-full overflow-hidden">
+      
+      <!-- Left: Question Input & Controls -->
+      <div class="w-full md:w-5/12 border-r border-surface-700 bg-surface-850 p-6 flex flex-col justify-between overflow-y-auto custom-scrollbar">
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <div class="p-1.5 rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-800">
+              <i data-lucide="terminal" class="w-4 h-4"></i>
+            </div>
+            <h2 class="text-base font-bold text-white">Contextual Debugging Assistant</h2>
+          </div>
+          <p class="text-xs text-slate-400 mb-4 leading-relaxed">
+            Query DevGraph Sentinel's persistent memory. The assistant retrieves connected historical decisions, bugs, fixes, and dependencies from Neo4j to ground its investigation guidance.
+          </p>
+
+          <!-- Pre-filled Hackathon Demo Prompts -->
+          <div class="mb-4">
+            <span class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Demo Quick Scenarios:</span>
+            <div class="mt-1.5 space-y-1.5">
+              <button onclick="setPrompt('The Users API returns HTTP 401 after the authentication refactor. Why might this happen, and what should I investigate before merging?', 'Authentication')" class="w-full text-left text-xs p-2.5 rounded-lg bg-surface-800 hover:bg-cyan-950/40 border border-surface-700 hover:border-cyan-700 text-slate-200 transition group flex items-start gap-2">
+                <i data-lucide="flame" class="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5"></i>
+                <div class="flex-1">
+                  <span class="font-semibold text-cyan-300 group-hover:text-cyan-200">Demo Scenario (Section 17):</span>
+                  <p class="text-[11px] text-slate-400">Users API 401 error after authentication refactor</p>
+                </div>
+              </button>
+
+              <button onclick="setPrompt('What technical decisions justified migrating session authentication to JWT, and what were the architectural implications?', 'Authentication')" class="w-full text-left text-xs p-2 rounded-lg bg-surface-800 hover:bg-surface-750 border border-surface-700 text-slate-300 transition flex items-center gap-2">
+                <i data-lucide="help-circle" class="w-3 h-3 text-purple-400 shrink-0"></i>
+                <span class="truncate">Why did we migrate session auth to JWT (DEC-101)?</span>
+              </button>
+
+              <button onclick="setPrompt('Which downstream components will be impacted if we modify the Authentication component?', 'Authentication')" class="w-full text-left text-xs p-2 rounded-lg bg-surface-800 hover:bg-surface-750 border border-surface-700 text-slate-300 transition flex items-center gap-2">
+                <i data-lucide="git-merge" class="w-3 h-3 text-cyan-400 shrink-0"></i>
+                <span class="truncate">Impact evaluation of Authentication refactor</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Component Scope Selector -->
+          <div class="mb-4">
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Target Component Focus (Optional)</label>
+            <select id="debugComponentSelect" class="w-full bg-surface-800 border border-surface-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+              <option value="">Auto-Detect from Question</option>
+              <option value="Authentication" selected>Authentication (COMP-AUTH)</option>
+              <option value="Users API">Users API (COMP-USERS)</option>
+              <option value="Admin Dashboard">Admin Dashboard (COMP-ADMIN)</option>
+              <option value="Notification Service">Notification Service (COMP-NOTIF)</option>
+            </select>
+          </div>
+
+          <!-- Question Input Textarea -->
+          <div class="mb-4">
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1">Engineering Inquiry</label>
+            <textarea id="debugQuestionInput" rows="4" class="w-full bg-surface-800 border border-surface-700 rounded-lg p-3 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500 resize-none font-sans" placeholder="e.g. Users API returns 401 after auth refactor. What should I check?">The Users API returns HTTP 401 after the authentication refactor. Why might this happen, and what should I investigate before merging?</textarea>
+          </div>
+
+          <button onclick="handleRunAnalysis()" id="btnRunAnalysis" class="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold text-xs shadow-lg shadow-cyan-900/30 flex items-center justify-center gap-2 transition">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+            <span>Analyze with Graph Evidence</span>
+          </button>
+        </div>
+
+        <!-- Grounding Guarantee Notice -->
+        <div class="mt-4 p-3 rounded-lg bg-surface-800/80 border border-surface-700 text-[11px] text-slate-400">
+          <div class="flex items-center gap-1.5 text-cyan-400 font-semibold mb-1">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+            <span>Grounding & Anti-Hallucination Guardrails</span>
+          </div>
+          <p>Sentinel cross-references graph traversal paths and labels past incidents as analogies, never claiming a past bug proves the current error without live verification.</p>
+        </div>
+      </div>
+
+      <!-- Right: Grounded Response & Evidence Deck -->
+      <div class="flex-1 bg-surface-900 p-6 overflow-y-auto custom-scrollbar flex flex-col">
+        <div id="debugResultPlaceholder" class="flex-1 flex flex-col items-center justify-center text-center p-8 text-slate-500">
+          <div class="w-16 h-16 rounded-full bg-surface-800 flex items-center justify-center mb-3 text-cyan-400">
+            <i data-lucide="cpu" class="w-8 h-8"></i>
+          </div>
+          <h4 class="text-sm font-semibold text-slate-300">Awaiting Inquiry</h4>
+          <p class="text-xs max-w-sm text-slate-500 mt-1">Submit an engineering question on the left to extract Neo4j graph evidence and view grounded AI recommendations.</p>
+        </div>
+
+        <div id="debugLoadingState" class="flex-1 hidden flex-col items-center justify-center text-center p-8">
+          <div class="w-12 h-12 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin mb-4"></div>
+          <h4 class="text-sm font-bold text-slate-200">Traversing Neo4j Project Graph...</h4>
+          <p class="text-xs text-slate-400 mt-1">Extracting decisions, previous bugs, fixes, dependencies, and regression suites</p>
+        </div>
+
+        <div id="debugResultContainer" class="hidden space-y-6">
+          
+          <!-- Top Assessment Banner -->
+          <div class="glass-card p-4 rounded-xl border border-cyan-800/50 glow-cyan">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[10px] uppercase font-extrabold tracking-wider px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">Graph Assessment</span>
+              <span id="debugSourcePill" class="text-[10px] text-slate-400 font-mono">--</span>
+            </div>
+            <p id="debugAssessmentText" class="text-sm font-semibold text-slate-100">--</p>
+          </div>
+
+          <!-- Grounded Evidence Cards Row -->
+          <div>
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+              <i data-lucide="database" class="w-3.5 h-3.5 text-cyan-400"></i>
+              <span>Retrieved Neo4j Evidence Records</span>
+            </h4>
+            <div id="evidenceCardsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Main Markdown Response Box -->
+          <div class="bg-surface-850 p-5 rounded-xl border border-surface-700">
+            <div class="flex items-center justify-between border-b border-surface-700 pb-2 mb-3">
+              <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                <i data-lucide="file-text" class="w-4 h-4 text-cyan-400"></i>
+                <span>Technical Synthesis & Guidance</span>
+              </span>
+              <button onclick="copyMarkdownAnswer()" class="text-[11px] text-slate-400 hover:text-white flex items-center gap-1">
+                <i data-lucide="copy" class="w-3 h-3"></i>
+                <span>Copy</span>
+              </button>
+            </div>
+            <div id="debugMarkdownAnswer" class="markdown-content text-xs text-slate-200">
+              <!-- Rendered markdown -->
+            </div>
+          </div>
+
+          <!-- Graph Path Chains -->
+          <div>
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+              <i data-lucide="share-2" class="w-3.5 h-3.5 text-purple-400"></i>
+              <span>Graph Traversal Evidence Paths</span>
+            </h4>
+            <div id="debugPathsList" class="space-y-1.5 font-mono text-[11px]">
+              <!-- Injected path strings -->
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= TAB 3: CHANGE IMPACT ANALYSIS ================= -->
+    <div id="tabContent-impact" class="tab-content flex-1 hidden flex-col md:flex-row h-[calc(100vh-105px)] w-full overflow-hidden">
+      
+      <!-- Left: Component Selection -->
+      <div class="w-full md:w-4/12 border-r border-surface-700 bg-surface-850 p-6 flex flex-col justify-between overflow-y-auto custom-scrollbar">
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <div class="p-1.5 rounded-lg bg-blue-950 text-blue-400 border border-blue-800">
+              <i data-lucide="git-pull-request" class="w-4 h-4"></i>
+            </div>
+            <h2 class="text-base font-bold text-white">Change Impact Analysis</h2>
+          </div>
+          <p class="text-xs text-slate-400 mb-4 leading-relaxed">
+            Select modified components to trace downstream consumers, evaluate historical regressions, and prioritize pre-merge regression tests.
+          </p>
+
+          <!-- Component Checkboxes -->
+          <div class="mb-5">
+            <label class="block text-[11px] font-semibold text-slate-400 mb-2">Select Changed Components:</label>
+            <div class="space-y-2 text-xs">
+              <label class="flex items-center gap-2.5 p-2.5 rounded-lg bg-surface-800 border border-surface-700 cursor-pointer hover:border-cyan-600 transition">
+                <input type="checkbox" name="impactComp" value="Authentication" checked class="rounded border-slate-700 text-cyan-600 focus:ring-0">
+                <div class="flex-1">
+                  <div class="font-semibold text-slate-200">Authentication</div>
+                  <div class="text-[10px] text-slate-400">Identity, JWT tokens, auth middleware</div>
+                </div>
+              </label>
+
+              <label class="flex items-center gap-2.5 p-2.5 rounded-lg bg-surface-800 border border-surface-700 cursor-pointer hover:border-cyan-600 transition">
+                <input type="checkbox" name="impactComp" value="Users API" class="rounded border-slate-700 text-cyan-600 focus:ring-0">
+                <div class="flex-1">
+                  <div class="font-semibold text-slate-200">Users API</div>
+                  <div class="text-[10px] text-slate-400">Profile endpoints, account management</div>
+                </div>
+              </label>
+
+              <label class="flex items-center gap-2.5 p-2.5 rounded-lg bg-surface-800 border border-surface-700 cursor-pointer hover:border-cyan-600 transition">
+                <input type="checkbox" name="impactComp" value="Admin Dashboard" class="rounded border-slate-700 text-cyan-600 focus:ring-0">
+                <div class="flex-1">
+                  <div class="font-semibold text-slate-200">Admin Dashboard</div>
+                  <div class="text-[10px] text-slate-400">Operations & permissions monitoring</div>
+                </div>
+              </label>
+
+              <label class="flex items-center gap-2.5 p-2.5 rounded-lg bg-surface-800 border border-surface-700 cursor-pointer hover:border-cyan-600 transition">
+                <input type="checkbox" name="impactComp" value="Notification Service" class="rounded border-slate-700 text-cyan-600 focus:ring-0">
+                <div class="flex-1">
+                  <div class="font-semibold text-slate-200">Notification Service</div>
+                  <div class="text-[10px] text-slate-400">Webhooks, push dispatch, emails</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <button onclick="handleRunImpact()" id="btnRunImpact" class="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-semibold text-xs shadow-lg shadow-blue-900/30 flex items-center justify-center gap-2 transition">
+            <i data-lucide="git-branch" class="w-4 h-4"></i>
+            <span>Calculate Downstream Impact</span>
+          </button>
+        </div>
+
+        <!-- Heuristic Rules Info -->
+        <div class="mt-4 p-3 rounded-lg bg-surface-800/80 border border-surface-700 text-[11px] text-slate-400 space-y-1">
+          <div class="font-bold text-slate-300">Heuristic Risk Scoring:</div>
+          <div>• Direct module edit: Always evaluated</div>
+          <div>• Historical regression (BUG-101): Elevates to <span class="text-red-400 font-semibold">HIGH</span></div>
+          <div>• Downstream consumers: Flagged as potential impact</div>
+        </div>
+      </div>
+
+      <!-- Right: Impact Report -->
+      <div class="flex-1 bg-surface-900 p-6 overflow-y-auto custom-scrollbar flex flex-col">
+        <div id="impactPlaceholder" class="flex-1 flex flex-col items-center justify-center text-center p-8 text-slate-500">
+          <div class="w-16 h-16 rounded-full bg-surface-800 flex items-center justify-center mb-3 text-blue-400">
+            <i data-lucide="git-merge" class="w-8 h-8"></i>
+          </div>
+          <h4 class="text-sm font-semibold text-slate-300">No Impact Calculation Yet</h4>
+          <p class="text-xs max-w-sm text-slate-500 mt-1">Select one or more components on the left and run analysis to trace affected downstream services.</p>
+        </div>
+
+        <div id="impactReportContainer" class="hidden space-y-6">
+          
+          <!-- Priority Status Banner -->
+          <div id="impactPriorityBanner" class="p-4 rounded-xl border flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div id="impactPriorityIcon" class="w-10 h-10 rounded-lg flex items-center justify-center font-black text-lg">
+                <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs text-slate-400">Heuristic Priority:</span>
+                  <span id="impactPriorityBadge" class="text-xs font-extrabold px-2.5 py-0.5 rounded-full uppercase">HIGH</span>
+                </div>
+                <p id="impactPriorityReason" class="text-xs text-slate-300 mt-0.5 font-medium">--</p>
+              </div>
+            </div>
+            <button onclick="visualizeImpactOnGraph()" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-surface-800 hover:bg-surface-700 border border-surface-600 text-cyan-300 transition flex items-center gap-1.5">
+              <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+              <span>View in Graph</span>
+            </button>
+          </div>
+
+          <!-- Affected Components Propagation Chain -->
+          <div>
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+              <i data-lucide="layers" class="w-3.5 h-3.5 text-cyan-400"></i>
+              <span>Affected Components Propagation Map</span>
+            </h4>
+            <div id="affectedComponentsList" class="space-y-2">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Historical Regressions on Affected Paths -->
+          <div>
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+              <i data-lucide="alert-octagon" class="w-3.5 h-3.5 text-red-400"></i>
+              <span>Historical Regressions on Affected Modules</span>
+            </h4>
+            <div id="impactHistoricalRisksList" class="space-y-2">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Recommended Pre-Merge Tests -->
+          <div>
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+              <i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-400"></i>
+              <span>Recommended Regression Test Suite</span>
+            </h4>
+            <div id="impactTestsList" class="space-y-2">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= TAB 4: ACTIVITY LOG & PROJECT MEMORY ================= -->
+    <div id="tabContent-activity" class="tab-content flex-1 hidden flex-col h-[calc(100vh-105px)] w-full overflow-y-auto custom-scrollbar p-6">
+      <div class="max-w-4xl mx-auto w-full">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+              <i data-lucide="activity" class="w-4 h-4 text-cyan-400"></i>
+              <span>Project Memory & Activity Stream</span>
+            </h2>
+            <p class="text-xs text-slate-400">Chronological history of recorded architectural decisions, bug remediations, and test verifications.</p>
+          </div>
+          <button onclick="openMemoryModal()" class="px-3 py-1.5 rounded-lg bg-surface-800 hover:bg-surface-700 border border-surface-600 text-xs font-semibold text-cyan-300 transition flex items-center gap-1.5">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+            <span>Log New Entry</span>
+          </button>
+        </div>
+
+        <div id="activityTimeline" class="space-y-4">
+          <!-- Populated via JS -->
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ================= MODAL: CAPTURE MEMORY ================= -->
+  <div id="memoryModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-surface-850 border border-surface-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between border-b border-surface-700 pb-3 mb-4">
+        <div class="flex items-center gap-2">
+          <i data-lucide="brain-circuit" class="w-5 h-5 text-cyan-400"></i>
+          <h3 class="font-bold text-sm text-white">Capture Into Project Memory</h3>
+        </div>
+        <button onclick="closeMemoryModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Type Switcher -->
+      <div class="flex items-center gap-2 mb-4 bg-surface-800 p-1 rounded-lg border border-surface-700">
+        <button onclick="switchMemoryType('decision')" id="memTypeBtn-decision" class="flex-1 py-1.5 text-xs font-semibold rounded bg-purple-600 text-white transition">
+          Technical Decision
+        </button>
+        <button onclick="switchMemoryType('bug')" id="memTypeBtn-bug" class="flex-1 py-1.5 text-xs font-semibold rounded text-slate-400 hover:text-white transition">
+          Bug / Incident
+        </button>
+      </div>
+
+      <form id="memoryForm" onsubmit="handleSaveMemory(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="memTypeInput" value="decision">
+
+        <div>
+          <label class="block text-slate-400 font-semibold mb-1">Title *</label>
+          <input type="text" id="memTitle" required placeholder="e.g. Migrate session auth to JWT or 401 error on refresh" class="w-full bg-surface-800 border border-surface-700 rounded-lg p-2.5 text-slate-100 focus:outline-none focus:border-cyan-500">
+        </div>
+
+        <div>
+          <label class="block text-slate-400 font-semibold mb-1">Affected Component *</label>
+          <select id="memComponent" required class="w-full bg-surface-800 border border-surface-700 rounded-lg p-2.5 text-slate-100 focus:outline-none focus:border-cyan-500">
+            <option value="Authentication">Authentication</option>
+            <option value="Users API">Users API</option>
+            <option value="Admin Dashboard">Admin Dashboard</option>
+            <option value="Notification Service">Notification Service</option>
+          </select>
+        </div>
+
+        <!-- Decision Fields -->
+        <div id="memDecisionFields" class="space-y-3">
+          <div>
+            <label class="block text-slate-400 font-semibold mb-1">Reason / Justification *</label>
+            <textarea id="memReason" rows="2" placeholder="Why was this decision made?" class="w-full bg-surface-800 border border-surface-700 rounded-lg p-2.5 text-slate-100 focus:outline-none focus:border-cyan-500"></textarea>
+          </div>
+          <div>
+            <label class="block text-slate-400 font-semibold mb-1">Architectural Description</label>
+            <textarea id="memDescription" rows="2" placeholder="Details of the implementation and tradeoffs" class="w-full bg-surface-800 border border-surface-700 rounded-lg p-2.5 text-slate-100 focus:outline-none focus:border-cyan-500"></textarea>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-slate-400 font-semibold mb-1">Associated Dependency</label>
+              <input type="text" id="memDependency" placeholder="e.g. JWT or Redis" class="w-full bg-surface-800 border border-surface-700 rounded-lg p-2 text-slate-100 focus:outline-none focus:border-cyan-500">
+            </div>
+            <div>
+              <label class="block text-slate-400 font-semibold mb-1">Author / Lead</label>
+              <input type="text" id="memAuthor" placeholder="e.g. Lead Architect" class="w-full bg-surface-800 border border-surface-700 rounded-lg p-2 text-slate-100 focus:outline-none focus:border-cyan-500">
+            </div>
+          </div>
+        </div>
+
+        <!-- Bug Fields -->
+        <div id="memBugFields" class="space-y-3 hidden">
+          <div>
+            <label class="block text-slate-400 font-semibold mb-1">Symptom *</label>
+            <textarea id="memSymptom" rows="2" placeholder="Observed failure or error code (e.g. HTTP 401 on token renewal)" class="w-full bg-surface-800 border border-surface-700 rounded-lg p-2.5 text-slate-100 focus:outline-none focus:border-cyan-500"></textarea>
+          </div>
+          <div>
+            <label class="block text-slate-400 font-semibold mb-1">Root Cause (if known)</label>
+            <textarea id="memRootCause" rows="2" placeholder="Underlying bug mechanism (e.g. middleware omitted from pipeline)" class="w-full bg-surface-800 border border-surface-700 rounded-lg p-2.5 text-slate-100 focus:outline-none focus:border-cyan-500"></textarea>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-slate-400 font-semibold mb-1">Resolution / Fix</label>
+              <input type="text" id="memResolution" placeholder="e.g. Restored middleware registration" class="w-full bg-surface-800 border border-surface-700 rounded-lg p-2 text-slate-100 focus:outline-none focus:border-cyan-500">
+            </div>
+            <div>
+              <label class="block text-slate-400 font-semibold mb-1">Verification / Test</label>
+              <input type="text" id="memVerification" placeholder="e.g. test_refresh_token passed" class="w-full bg-surface-800 border border-surface-700 rounded-lg p-2 text-slate-100 focus:outline-none focus:border-cyan-500">
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-surface-700 flex items-center justify-end gap-2">
+          <button type="button" onclick="closeMemoryModal()" class="px-3 py-2 rounded-lg bg-surface-800 hover:bg-surface-700 text-slate-300 font-medium">Cancel</button>
+          <button type="submit" id="btnSubmitMemory" class="px-4 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold flex items-center gap-1.5 shadow-md">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>Save to Neo4j Graph</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= MODAL: SYSTEM HEALTH & DIAGNOSTICS ================= -->
+  <div id="healthModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-surface-850 border border-surface-700 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between border-b border-surface-700 pb-3 mb-4">
+        <div class="flex items-center gap-2">
+          <i data-lucide="server" class="w-5 h-5 text-cyan-400"></i>
+          <h3 class="font-bold text-sm text-white">System Diagnostics</h3>
+        </div>
+        <button onclick="closeHealthModal()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div class="p-3 rounded-lg bg-surface-800 border border-surface-700">
+          <span class="text-[10px] text-slate-500 uppercase font-semibold">Graph Database Engine</span>
+          <p id="diagNeo4jStatus" class="font-semibold text-slate-200 mt-0.5">--</p>
+          <span id="diagStorageBackend" class="text-[11px] text-cyan-400 font-mono">--</span>
+        </div>
+
+        <div class="p-3 rounded-lg bg-surface-800 border border-surface-700">
+          <span class="text-[10px] text-slate-500 uppercase font-semibold">AI Assistant Engine</span>
+          <p id="diagAIStatus" class="font-semibold text-slate-200 mt-0.5">--</p>
+          <span id="diagAIModel" class="text-[11px] text-cyan-400 font-mono">--</span>
+        </div>
+
+        <div>
+          <span class="text-[10px] text-slate-500 uppercase font-semibold">Diagnostics Log</span>
+          <div id="diagList" class="mt-1 space-y-1 bg-surface-800 p-2.5 rounded border border-surface-700 text-slate-300 font-mono text-[11px]">
+            <!-- Injected via JS -->
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4 pt-3 border-t border-surface-700 text-right">
+        <button onclick="closeHealthModal()" class="px-4 py-2 rounded-lg bg-surface-800 hover:bg-surface-700 text-white font-medium text-xs">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2 pointer-events-none"></div>
+
+  <!-- Frontend Application Logic Script -->
+  <script src="/app.js"></script>
+</body>
+</html>

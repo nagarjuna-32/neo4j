@@ -1,0 +1,83 @@
+import logging
+from pathlib import Path
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, JSONResponse
+
+from backend.app.config import settings
+from backend.app.database import db_manager
+from backend.app.services.graph_service import graph_service
+from backend.app.routes import health, seed, projects, graph, memory, analyze, impact, activity
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger("devgraph.main")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: attempt Neo4j connection and ensure seed baseline
+    logger.info("Initializing DevGraph Sentinel...")
+    connected = db_manager.initialize()
+    if connected:
+        logger.info("Neo4j database connected. Verifying schema and seeding demo baseline...")
+        graph_service.seed_data()
+    else:
+        logger.info("Neo4j offline. Running in Local Graph Memory mode for instant evaluation.")
+
+    yield
+
+    # Shutdown
+    logger.info("Shutting down DevGraph Sentinel...")
+    db_manager.close()
+
+
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    description="DevGraph Sentinel — AI Engineering Memory & Change Impact Intelligence API",
+    version=settings.VERSION,
+    lifespan=lifespan,
+)
+
+# CORS configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include API routes
+app.include_router(health.router, prefix="/api")
+app.include_router(seed.router, prefix="/api")
+app.include_router(projects.router, prefix="/api")
+app.include_router(graph.router, prefix="/api")
+app.include_router(memory.router, prefix="/api")
+app.include_router(analyze.router, prefix="/api")
+app.include_router(impact.router, prefix="/api")
+app.include_router(activity.router, prefix="/api")
+
+# Mount frontend static directory if exists
+frontend_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+frontend_src = Path(__file__).resolve().parent.parent.parent / "frontend"
+
+if frontend_dist.exists() and (frontend_dist / "index.html").exists():
+    app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend-dist")
+elif frontend_src.exists() and (frontend_src / "index.html").exists():
+    app.mount("/", StaticFiles(directory=str(frontend_src), html=True), name="frontend-static")
+else:
+    @app.get("/")
+    def root():
+        return {
+            "title": settings.PROJECT_NAME,
+            "tagline": settings.TAGLINE,
+            "version": settings.VERSION,
+            "docs_url": "/docs",
+            "health_url": "/api/health",
+            "message": "DevGraph Sentinel API is running. Access /docs for interactive OpenAPI explorer.",
+        }
