@@ -952,16 +952,50 @@ class GraphService:
             "evidence_paths": list(set(evidence_paths)),
         }
 
-    def get_downstream_impact(self, project_id: str, changed_components: List[str]) -> Dict[str, Any]:
+    def get_downstream_impact(
+        self,
+        project_id: str,
+        changed_components: Optional[List[str]] = None,
+        changed_files: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
         """
         Traverse the graph downstream:
         If component X changes, any component that DEPENDS_ON X (directly or transitively) is affected!
+        Also resolves modified file paths to components, and handles unknown components gracefully.
         """
-        directly_changed_ids = [self._resolve_component_id(c) for c in changed_components]
-        directly_changed_names = [self._resolve_component_name(c) for c in changed_components]
+        changed_components = changed_components or []
+        changed_files = changed_files or []
+
+        # Resolve files to components
+        all_comp_inputs = list(changed_components)
+        for fp in changed_files:
+            resolved_from_fp = self._resolve_component_from_file_path(fp)
+            if resolved_from_fp and resolved_from_fp not in all_comp_inputs:
+                all_comp_inputs.append(resolved_from_fp)
+
+        # Distinguish known cataloged components from unknown/unresolved inputs
+        known_components: List[str] = []
+        unresolved_inputs: List[str] = []
+
+        for c in all_comp_inputs:
+            cid = self._resolve_component_id(c)
+            cname = self._resolve_component_name(c)
+            # Check if component exists in knowledge graph
+            if cid in in_memory_store.nodes or any(
+                n["label"] == "Component" and n["properties"].get("name", "").lower() == c.lower()
+                for n in in_memory_store.nodes.values()
+            ):
+                if cname not in known_components:
+                    known_components.append(cname)
+            else:
+                unresolved_inputs.append(c)
+
+        directly_changed_ids = [self._resolve_component_id(c) for c in known_components]
+        directly_changed_names = [self._resolve_component_name(c) for c in known_components]
 
         affected_components: List[AffectedComponent] = []
         historical_risks: List[Dict[str, Any]] = []
+        technical_decisions: List[Dict[str, Any]] = []
         suggested_tests: List[Dict[str, Any]] = []
         graph_paths: List[List[str]] = []
         seen_affected: Set[str] = set()
@@ -974,13 +1008,24 @@ class GraphService:
                 tier="direct",
                 reason=f"Directly modified component under review ({cname})",
                 path=[cname],
+                status_label="potential_impact",
             ))
             seen_affected.add(cid)
             seen_affected.add(cname)
 
+        # Handle unresolved / unknown inputs gracefully without crashing
+        for unk in unresolved_inputs:
+            affected_components.append(AffectedComponent(
+                id=f"UNKNOWN-{unk.upper().replace(' ', '_')}",
+                name=unk,
+                tier="unresolved",
+                reason=f"Component '{unk}' not cataloged in knowledge graph; no downstream dependency paths available",
+                path=[unk],
+                status_label="unresolved",
+            ))
+
         # BFS downstream traversal: find components that depend on directly changed components
         # Edge direction in graph: (Consumer)-[:DEPENDS_ON]->(Provider)
-        # So we look for edges where edge['target'] in current_tier
         current_tier_ids = set(directly_changed_ids)
         current_tier_names = set(directly_changed_names)
         depth = 1
@@ -1008,20 +1053,27 @@ class GraphService:
                                 tier=tier_label,  # type: ignore
                                 reason=f"Consumes '{target_name}' via DEPENDS_ON relationship (Depth {depth})",
                                 path=[target_name, source_name],
+                                status_label="potential_impact",
                             ))
                             graph_paths.append([target_name, "DEPENDS_ON", source_name])
             current_tier_ids = next_tier_ids
             depth += 1
 
-        # Retrieve historical risks and regression tests for all affected components
+        # Retrieve historical risks, technical decisions, and regression tests for affected components
+        seen_bugs = set()
+        seen_decisions = set()
+        seen_tests = set()
+
         for aff in affected_components:
             cid = aff.id
             cname = aff.name
+
             # Check bugs and fixes
             for edge in in_memory_store.edges:
                 if edge["source"] == cid and edge["type"] == "HAS_BUG":
                     bug_node = in_memory_store.nodes.get(edge["target"])
-                    if bug_node:
+                    if bug_node and bug_node["id"] not in seen_bugs:
+                        seen_bugs.add(bug_node["id"])
                         b_props = bug_node["properties"]
                         historical_risks.append({
                             "component": cname,
@@ -1038,7 +1090,8 @@ class GraphService:
                                 for t_edge in in_memory_store.edges:
                                     if t_edge["source"] == fix_id and t_edge["type"] == "VERIFIED_BY":
                                         test_node = in_memory_store.nodes.get(t_edge["target"])
-                                        if test_node:
+                                        if test_node and test_node["id"] not in seen_tests:
+                                            seen_tests.add(test_node["id"])
                                             t_props = test_node["properties"]
                                             suggested_tests.append({
                                                 "test_id": test_node["id"],
@@ -1049,36 +1102,53 @@ class GraphService:
                                                 "associated_bug": bug_node["id"],
                                             })
 
-        # Heuristic Priority Evaluation
+                # Check technical decisions
+                if edge["source"] == cid and edge["type"] == "AFFECTED_BY":
+                    dec_node = in_memory_store.nodes.get(edge["target"])
+                    if dec_node and dec_node["id"] not in seen_decisions:
+                        seen_decisions.add(dec_node["id"])
+                        d_props = dec_node["properties"]
+                        technical_decisions.append({
+                            "decision_id": dec_node["id"],
+                            "title": d_props.get("title"),
+                            "reason": d_props.get("reason"),
+                            "author": d_props.get("author"),
+                            "status": d_props.get("status"),
+                            "affected_component": cname,
+                        })
+
+        # Heuristic Priority Evaluation (Deterministic rules without invented probabilities)
         priority_reasons: List[str] = []
-        has_direct_auth = any(
-            aff.id == "COMP-AUTH" or "auth" in aff.name.lower() for aff in affected_components
-        )
         has_historical_bugs = len(historical_risks) > 0
-        downstream_count = len(affected_components) - len(directly_changed_ids)
+        downstream_count = len([a for a in affected_components if a.tier != "direct" and a.tier != "unresolved"])
 
         if has_historical_bugs and downstream_count > 0:
             heuristic_priority = "HIGH"
             priority_reasons.append("Historical regression incidents recorded on affected components (e.g. BUG-101).")
             priority_reasons.append(f"{downstream_count} downstream consumer component(s) potentially impacted.")
-        elif downstream_count > 1:
+        elif downstream_count > 1 or has_historical_bugs:
             heuristic_priority = "MEDIUM"
-            priority_reasons.append(f"Multiple downstream services ({downstream_count}) depend on modified modules.")
+            if downstream_count > 1:
+                priority_reasons.append(f"Multiple downstream services ({downstream_count}) depend on modified modules.")
+            if has_historical_bugs:
+                priority_reasons.append("Historical bug recorded on directly changed module.")
         else:
             heuristic_priority = "LOW"
             priority_reasons.append("Isolated change with limited or zero downstream propagation.")
 
         explanations = [
-            f"Impact heuristic evaluated {len(affected_components)} total component(s).",
-            f"Downstream dependency propagation identified {downstream_count} indirect consumer(s).",
-            f"Retrieved {len(historical_risks)} historical incident(s) and {len(suggested_tests)} regression test recommendation(s).",
+            f"Evaluated {len(known_components)} recognized component(s) and {len(unresolved_inputs)} uncataloged input(s).",
+            f"Downstream dependency traversal identified {downstream_count} potential indirect consumer(s).",
+            f"Retrieved {len(historical_risks)} historical incident(s), {len(technical_decisions)} architectural decision(s), and {len(suggested_tests)} regression test recommendation(s).",
         ]
 
         return {
             "project_id": project_id,
             "directly_changed": directly_changed_names,
+            "unresolved_inputs": unresolved_inputs,
             "affected_components": [a.model_dump() for a in affected_components],
             "historical_risks": historical_risks,
+            "technical_decisions": technical_decisions,
             "suggested_tests": suggested_tests,
             "graph_paths": graph_paths,
             "heuristic_priority": heuristic_priority,
@@ -1129,6 +1199,18 @@ class GraphService:
         if "admin" in lower or "dashboard" in lower:
             return "Admin Dashboard"
         if "notification" in lower or "email" in lower or "webhook" in lower:
+            return "Notification Service"
+        return None
+
+    def _resolve_component_from_file_path(self, file_path: str) -> Optional[str]:
+        clean = file_path.strip().lower()
+        if "auth" in clean or "jwt" in clean or "token" in clean or "login" in clean:
+            return "Authentication"
+        if "user" in clean or "profile" in clean or "account" in clean:
+            return "Users API"
+        if "admin" in clean or "dashboard" in clean or "metric" in clean:
+            return "Admin Dashboard"
+        if "notif" in clean or "email" in clean or "webhook" in clean:
             return "Notification Service"
         return None
 

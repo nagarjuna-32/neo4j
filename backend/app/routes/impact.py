@@ -12,10 +12,10 @@ def analyze_change_impact(request: ImpactRequest) -> ImpactResponse:
     Computes direct modifications, 1-hop and 2-hop consumers, historical regressions, and test suite.
     """
     try:
-        if not request.changed_components:
+        if not request.changed_components and not request.changed_files:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="At least one changed component must be specified for impact analysis.",
+                detail="At least one changed component or changed file must be specified for impact analysis.",
             )
         response = impact_service.evaluate_impact(request)
         return response

@@ -13,7 +13,8 @@ class ImpactService:
         """
         raw = graph_service.get_downstream_impact(
             project_id=request.project_id,
-            changed_components=request.changed_components,
+            changed_components=request.changed_components or [],
+            changed_files=request.changed_files or [],
         )
 
         affected = [
@@ -23,6 +24,7 @@ class ImpactService:
                 tier=item["tier"],
                 reason=item["reason"],
                 path=item["path"],
+                status_label=item.get("status_label", "potential_impact"),
             )
             for item in raw["affected_components"]
         ]
@@ -30,8 +32,10 @@ class ImpactService:
         return ImpactResponse(
             project_id=raw["project_id"],
             directly_changed=raw["directly_changed"],
+            unresolved_inputs=raw.get("unresolved_inputs", []),
             affected_components=affected,
             historical_risks=raw["historical_risks"],
+            technical_decisions=raw.get("technical_decisions", []),
             suggested_tests=raw["suggested_tests"],
             graph_paths=raw["graph_paths"],
             heuristic_priority=raw["heuristic_priority"],

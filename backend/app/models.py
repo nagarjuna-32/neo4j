@@ -115,31 +115,40 @@ class AnalyzeResponse(BaseModel):
 
 # --- Change Impact Analysis ---
 class ImpactRequest(BaseModel):
-    project_id: str = Field(default="PRJ-SENTINEL")
-    changed_components: List[str] = Field(
-        ..., min_length=1, description="List of component names or IDs"
+    project_id: str = Field(default="PRJ-SENTINEL", description="Project ID")
+    changed_components: Optional[List[str]] = Field(
+        default=[], description="List of component names or IDs"
     )
-    changed_files: Optional[List[str]] = Field(default=[])
+    changed_files: Optional[List[str]] = Field(
+        default=[], description="List of modified file paths"
+    )
 
 
 class AffectedComponent(BaseModel):
     id: str
     name: str
-    tier: Literal["direct", "downstream_1", "downstream_2", "transitive"]
+    tier: Literal["direct", "downstream_1", "downstream_2", "transitive", "unresolved"]
     reason: str
     path: List[str]
+    status_label: str = "potential_impact"
 
 
 class ImpactResponse(BaseModel):
     project_id: str
     directly_changed: List[str]
+    unresolved_inputs: List[str] = []
     affected_components: List[AffectedComponent]
-    historical_risks: List[Dict[str, Any]]
-    suggested_tests: List[Dict[str, Any]]
-    graph_paths: List[List[str]]
+    historical_risks: List[Dict[str, Any]] = []
+    technical_decisions: List[Dict[str, Any]] = []
+    suggested_tests: List[Dict[str, Any]] = []
+    graph_paths: List[List[str]] = []
     heuristic_priority: Literal["HIGH", "MEDIUM", "LOW"]
-    priority_reasons: List[str]
-    explanations: List[str]
+    priority_reasons: List[str] = []
+    explanations: List[str] = []
+    disclaimer: str = (
+        "All downstream findings represent potential impacts based on graph topology. "
+        "Review priorities are heuristic-based and must be validated through code inspection and regression testing."
+    )
 
 
 # --- Activity Log ---
