@@ -1,5 +1,5 @@
 // DevGraph Sentinel — Frontend Application Logic
-// Hackathon Build Sprint Bengaluru 2026
+// Architecture Intelligence & Memory
 
 let cy = null;
 let currentGraphData = { nodes: [], edges: [], stats: {} };
