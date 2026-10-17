@@ -511,6 +511,13 @@
             </div>
           </div>
 
+          <!-- File Paths Input -->
+          <div class="mb-5">
+            <label class="block text-[11px] font-semibold text-slate-400 mb-1.5">Or Changed File Paths (Optional):</label>
+            <input type="text" id="impactFilesInput" placeholder="e.g. services/auth/jwt.py, api/users.py" class="w-full bg-surface-800 border border-surface-700 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500">
+            <p class="text-[10px] text-slate-500 mt-1">DevGraph Sentinel maps files directly to knowledge graph components.</p>
+          </div>
+
           <button onclick="handleRunImpact()" id="btnRunImpact" class="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-semibold text-xs shadow-lg shadow-blue-900/30 flex items-center justify-center gap-2 transition">
             <i data-lucide="git-branch" class="w-4 h-4"></i>
             <span>Calculate Downstream Impact</span>
@@ -589,6 +596,23 @@
             <div id="impactTestsList" class="space-y-2">
               <!-- Dynamically populated -->
             </div>
+          </div>
+
+          <!-- Technical Decisions on Affected Modules -->
+          <div>
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+              <i data-lucide="compass" class="w-3.5 h-3.5 text-purple-400"></i>
+              <span>Architectural Decisions on Affected Modules</span>
+            </h4>
+            <div id="impactDecisionsList" class="space-y-2">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Impact Disclaimer Notice -->
+          <div class="p-3 rounded-xl bg-surface-850 border border-slate-700/80 text-[11px] text-slate-400 flex items-start gap-2.5">
+            <i data-lucide="info" class="w-4 h-4 text-cyan-400 shrink-0 mt-0.5"></i>
+            <p id="impactDisclaimerText" class="leading-relaxed">Potential impacts identified through graph traversal. Must be validated by code inspection and testing.</p>
           </div>
 
         </div>

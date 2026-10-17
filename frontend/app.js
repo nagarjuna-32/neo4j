@@ -597,12 +597,18 @@ function copyMarkdownAnswer() {
 }
 
 // ================= FEATURE C: CHANGE IMPACT ANALYSIS =================
+let lastImpactResult = null;
+
 async function handleRunImpact() {
   const checkboxes = document.querySelectorAll('input[name="impactComp"]:checked');
   const changedComps = Array.from(checkboxes).map(cb => cb.value);
 
-  if (changedComps.length === 0) {
-    showToast('Please select at least one changed component', 'error');
+  const filesInput = document.getElementById('impactFilesInput');
+  const filesVal = filesInput ? filesInput.value.trim() : '';
+  const changedFiles = filesVal ? filesVal.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+  if (changedComps.length === 0 && changedFiles.length === 0) {
+    showToast('Please select at least one component or enter changed file paths', 'error');
     return;
   }
 
@@ -610,17 +616,26 @@ async function handleRunImpact() {
   btn.disabled = true;
 
   try {
+    const payload = {
+      project_id: 'PRJ-SENTINEL',
+      changed_components: changedComps,
+    };
+    if (changedFiles.length > 0) {
+      payload.changed_files = changedFiles;
+    }
+
     const res = await fetch('/api/impact', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        project_id: 'PRJ-SENTINEL',
-        changed_components: changedComps,
-      }),
+      body: JSON.stringify(payload),
     });
 
-    if (!res.ok) throw new Error('Impact analysis failed');
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || 'Impact analysis failed');
+    }
     const data = await res.json();
+    lastImpactResult = data;
     renderImpactResult(data);
     showToast('Change impact graph traversal calculated', 'success');
   } catch (err) {
@@ -676,7 +691,7 @@ function renderImpactResult(data) {
         </div>
         <p class="text-[11px] text-slate-400 mt-0.5">${aff.reason}</p>
       </div>
-      <div class="font-mono text-[10px] text-slate-500">${aff.path.join(' ➔ ')}</div>
+      <div class="font-mono text-[10px] text-slate-500">${(aff.path || []).join(' ➔ ')}</div>
     `;
     affList.appendChild(item);
   });
@@ -723,6 +738,35 @@ function renderImpactResult(data) {
     });
   }
 
+  // Technical Decisions
+  const decList = document.getElementById('impactDecisionsList');
+  if (decList) {
+    decList.innerHTML = '';
+    if ((data.technical_decisions || []).length === 0) {
+      decList.innerHTML = '<p class="text-xs text-slate-500 italic p-3 bg-surface-800 rounded-lg">No architectural decisions recorded on the affected component paths.</p>';
+    } else {
+      data.technical_decisions.forEach(dec => {
+        const item = document.createElement('div');
+        item.className = 'p-3 rounded-xl border border-purple-900/40 bg-purple-950/20 text-xs space-y-1';
+        item.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="font-mono font-bold text-purple-400">${dec.decision_id}</span>
+            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-900/80 text-purple-200">${dec.component}</span>
+          </div>
+          <p class="font-semibold text-slate-200">${dec.title}</p>
+          <p class="text-[11px] text-slate-400"><strong class="text-purple-300">Rationale:</strong> ${dec.reason || 'Documented architectural choice'}</p>
+        `;
+        decList.appendChild(item);
+      });
+    }
+  }
+
+  // Disclaimer text
+  const disc = document.getElementById('impactDisclaimerText');
+  if (disc && data.disclaimer) {
+    disc.innerText = data.disclaimer;
+  }
+
   if (window.lucide) lucide.createIcons();
 }
 
@@ -730,8 +774,32 @@ function visualizeImpactOnGraph() {
   switchTab('graph');
   if (!cy) return;
 
-  const checkboxes = document.querySelectorAll('input[name="impactComp"]:checked');
-  const changedComps = Array.from(checkboxes).map(cb => cb.value);
+  // Build target set from lastImpactResult if available
+  const targetNamesAndIds = new Set();
+  const directNames = new Set();
+
+  if (lastImpactResult) {
+    (lastImpactResult.affected_components || []).forEach(aff => {
+      targetNamesAndIds.add(aff.name);
+      if (aff.component_id) targetNamesAndIds.add(aff.component_id);
+      if (aff.tier === 'direct') directNames.add(aff.name);
+    });
+    (lastImpactResult.historical_risks || []).forEach(r => {
+      targetNamesAndIds.add(r.bug_id);
+      if (r.component) targetNamesAndIds.add(r.component);
+    });
+    (lastImpactResult.technical_decisions || []).forEach(d => {
+      targetNamesAndIds.add(d.decision_id);
+      if (d.component) targetNamesAndIds.add(d.component);
+    });
+    (lastImpactResult.suggested_tests || []).forEach(t => {
+      targetNamesAndIds.add(t.test_id);
+      if (t.target_component) targetNamesAndIds.add(t.target_component);
+    });
+  } else {
+    const checkboxes = document.querySelectorAll('input[name="impactComp"]:checked');
+    checkboxes.forEach(cb => targetNamesAndIds.add(cb.value));
+  }
 
   cy.elements().removeClass('highlighted dimmed');
 
@@ -739,7 +807,7 @@ function visualizeImpactOnGraph() {
     cy.nodes().forEach(node => {
       const name = node.data('fullLabel');
       const id = node.id();
-      if (changedComps.includes(name) || changedComps.includes(id) || ['Users API', 'Admin Dashboard'].includes(name)) {
+      if (targetNamesAndIds.has(name) || targetNamesAndIds.has(id)) {
         node.addClass('highlighted');
       } else {
         node.addClass('dimmed');
@@ -747,15 +815,32 @@ function visualizeImpactOnGraph() {
     });
 
     cy.edges().forEach(edge => {
-      const srcName = edge.source().data('fullLabel');
-      const tgtName = edge.target().data('fullLabel');
-      if (changedComps.includes(srcName) || changedComps.includes(tgtName) || ['Users API', 'Authentication'].includes(tgtName)) {
+      const src = edge.source();
+      const tgt = edge.target();
+      const srcName = src.data('fullLabel');
+      const tgtName = tgt.data('fullLabel');
+      const srcId = src.id();
+      const tgtId = tgt.id();
+
+      if ((targetNamesAndIds.has(srcName) || targetNamesAndIds.has(srcId)) &&
+          (targetNamesAndIds.has(tgtName) || targetNamesAndIds.has(tgtId))) {
         edge.addClass('highlighted');
       } else {
         edge.addClass('dimmed');
       }
     });
   });
+
+  const highlightedNodes = cy.elements('node.highlighted');
+  if (highlightedNodes.length > 0) {
+    cy.animate({
+      fit: {
+        eles: highlightedNodes,
+        padding: 50,
+      },
+      duration: 500,
+    });
+  }
 
   showToast('Highlighting downstream impact path in Knowledge Graph', 'info');
 }
