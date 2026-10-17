@@ -102,10 +102,10 @@ flowchart TD
 
 ## 5. Environment Configuration
 
-Copy `.env.example` to `.env`:
+In **Windows PowerShell**, copy `.env.example` to `.env`:
 
-```bash
-cp .env.example .env
+```powershell
+Copy-Item .env.example .env
 ```
 
 ### Configuration Variables
@@ -126,22 +126,31 @@ cp .env.example .env
 
 ---
 
-## 6. How to Run
+## 6. How to Run (Windows PowerShell)
 
-### 1. Install Dependencies
-```bash
-pip install -r requirements.txt
+Open **Windows PowerShell** in the project directory (`c:\Users\Nagarjuna N\Desktop\neo`):
+
+### 1. (Optional) Create & Activate Virtual Environment
+```powershell
+python -m venv .venv
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
 ```
 
-### 2. Start the Application
-```bash
+### 2. Install Dependencies
+```powershell
+python -m pip install -r requirements.txt
+```
+
+### 3. Start the Application Server
+```powershell
 python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### 3. Access the Dashboard
+### 4. Access the Dashboard
 - **Web UI & Graph Explorer:** Open [http://localhost:8000](http://localhost:8000)
 - **Interactive OpenAPI Documentation:** Open [http://localhost:8000/docs](http://localhost:8000/docs)
-
+- **Health & Diagnostics:** Open [http://localhost:8000/api/health](http://localhost:8000/api/health)
 ---
 
 ## 7. Running Automated Tests

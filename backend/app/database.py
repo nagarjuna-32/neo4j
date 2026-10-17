@@ -53,15 +53,21 @@ class Neo4jConnectionManager:
             return True
         except (ServiceUnavailable, AuthError, Neo4jError, Exception) as exc:
             self._is_connected = False
-            self._connection_error = f"Neo4j connection error: {str(exc)}"
+            safe_err = str(exc)
+            if settings.NEO4J_PASSWORD and settings.NEO4J_PASSWORD in safe_err:
+                safe_err = safe_err.replace(settings.NEO4J_PASSWORD, "******")
+            self._connection_error = f"Neo4j connection error: {safe_err}"
             logger.warning(
-                f"Failed to connect to Neo4j: {str(exc)}. Falling back to Local Graph Engine."
+                f"Failed to connect to Neo4j: {safe_err}. Falling back to Local Graph Engine."
             )
             return False
 
     def close(self):
         if self._driver:
-            self._driver.close()
+            try:
+                self._driver.close()
+            except Exception:
+                pass
             self._driver = None
             self._is_connected = False
             logger.info("Neo4j driver closed.")

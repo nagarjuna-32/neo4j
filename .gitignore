@@ -27,6 +27,8 @@ wheels/
 # Secrets & Environment
 .env
 *.local.env
+.env.*
+!.env.example
 
 # Testing & Cache
 .pytest_cache/
