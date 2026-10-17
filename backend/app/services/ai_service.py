@@ -54,16 +54,17 @@ class AIService:
                 )
             except Exception as exc:
                 logger.warning(
-                    f"OpenAI call failed ({exc}). Falling back to deterministic evidence engine."
+                    f"OpenAI API call failed ({exc}). Falling back to deterministic evidence engine."
                 )
 
         # Fallback deterministic reasoning grounded in graph evidence
+        fallback_reason = "OpenAI API key not configured in .env" if not settings.is_openai_configured else "OpenAI API connection failed or timed out"
         return self._generate_deterministic_analysis(
             project_id=project_id,
             question=question,
             detected_comp=detected_comp,
             context=context,
-            reason_for_fallback="OpenAI API key not configured or API call timed out",
+            reason_for_fallback=fallback_reason,
         )
 
     def _call_openai_llm(
@@ -86,8 +87,9 @@ class AIService:
             "1. NEVER invent historical decisions, bugs, fixes, or tests. Only cite what is present in the graph evidence.\n"
             "2. Distinguish historical facts (e.g. past bugs) from current hypotheses. A past bug is an analogy/lead, NOT confirmed proof of the current issue.\n"
             "3. Cite graph entities by their exact ID (e.g. DEC-101, BUG-101, FIX-101, TEST-101).\n"
-            "4. Clearly disclose evidence limitations.\n"
-            "5. Return your response as a valid JSON object matching the requested schema."
+            "4. Clearly distinguish verified results from ongoing hypotheses.\n"
+            "5. If the evidence is insufficient, explain what specific logs, code diffs, or tracebacks are missing.\n"
+            "6. Return your response as a valid JSON object matching the requested schema."
         )
 
         user_prompt = f"""
@@ -111,10 +113,10 @@ Graph Traversal Paths:
 Respond with a JSON object containing EXACTLY these keys:
 - "assessment": (string) High-level engineering assessment
 - "answer": (string) Comprehensive markdown-formatted explanation covering why this might happen, historical precedent, and investigation guidance
-- "potential_root_causes": (array of strings) Inferred potential root causes
+- "potential_root_causes": (array of strings) Inferred potential root causes (hypotheses)
 - "suggested_checks": (array of strings) Concrete debugging checks to perform before merging
 - "suggested_tests": (array of strings) Recommended regression tests to run
-- "evidence_limitations": (string) Statement on what graph evidence is missing or unverified
+- "evidence_limitations": (string) Statement on what graph evidence is missing or what runtime logs/code diffs are required
 - "confidence_explanation": (string) Why confidence is high/medium/low based on graph proximity
 """
 
@@ -174,26 +176,72 @@ Respond with a JSON object containing EXACTLY these keys:
         bugs = context.get("bugs", [])
         tests = context.get("tests", [])
 
-        # Format retrieved items
-        has_auth_context = any(
-            "401" in question or "auth" in detected_comp.lower() or "jwt" in question.lower()
-            for _ in [1]
-        )
-
-        # Match specific demo scenario DEC-101 / BUG-101 if present in graph
-        dec_101 = next((d for d in decisions if d.get("id") == "DEC-101"), None)
-        bug_101 = next((b for b in bugs if b.get("id") == "BUG-101"), None)
+        # Check if evidence is empty
+        is_evidence_empty = len(decisions) == 0 and len(bugs) == 0 and len(tests) == 0
 
         potential_root_causes: List[str] = []
         suggested_checks: List[str] = []
         suggested_tests: List[str] = []
-        connected_dec_titles: List[str] = []
-        hist_bug_titles: List[str] = []
+        connected_dec_titles: List[str] = [f"{d.get('id', 'DEC')}: {d.get('title', '')}" for d in decisions if d.get("title")]
+        hist_bug_titles: List[str] = [f"{b.get('id', 'BUG')}: {b.get('title', '')}" for b in bugs if b.get("title")]
 
-        for d in decisions:
-            connected_dec_titles.append(f"{d.get('id', 'DEC')}: {d.get('title', '')}")
-        for b in bugs:
-            hist_bug_titles.append(f"{b.get('id', 'BUG')}: {b.get('title', '')}")
+        if is_evidence_empty:
+            assessment = f"No historical project memory records found for '{detected_comp}' in {project_id}."
+            evidence_limitations = (
+                f"Knowledge graph has zero recorded decisions, bugs, or regression tests for component '{detected_comp}'. "
+                "Missing runtime request logs, uncommitted local git diffs, and middleware pipeline traces."
+            )
+            confidence_explanation = "Low confidence due to absence of historical graph connections."
+            suggested_checks = [
+                f"Inspect current application logs for '{detected_comp}' error stack traces",
+                "Review recent git commit diffs affecting the component",
+                "Verify network firewall, reverse proxy, or API Gateway routing rules",
+            ]
+            suggested_tests = [
+                f"Run existing unit test suite for {detected_comp}",
+                "Execute local integration smoke test against the affected route",
+            ]
+            answer_lines = [
+                f"### Assessment: Insufficient Knowledge Graph Evidence for {detected_comp}",
+                "",
+                f"A query regarding **{question}** was evaluated against the **{project_id}** knowledge graph.",
+                "",
+                "> **Evidence Limitation:** No historical decisions (`Decision`), previous incidents (`Bug`), or regression suites (`Test`) were found in the knowledge graph for this component.",
+                "",
+                "#### Missing Context Required to Diagnose:",
+                "1. **Runtime Server Logs:** Ephemeral application logs, HTTP response headers, and exception tracebacks.",
+                "2. **Local Code Diffs:** Recent uncommitted edits to routing configuration or dependency injection chains.",
+                "3. **Component Identity:** Verify if the component is registered under an alternate name or alias.",
+                "",
+                "#### General Verification Checklist:",
+                *[f"1. [ ] {chk}" for chk in suggested_checks],
+                "",
+                "#### Recommended Action:",
+                "Once this incident is investigated and resolved, record the finding into project memory using `POST /api/memory` to empower future automated debugging.",
+            ]
+            markdown_answer = "\n".join(answer_lines)
+
+            return AnalyzeResponse(
+                question=question,
+                answer=markdown_answer,
+                assessment=assessment,
+                relevant_evidence=[],
+                evidence_paths=[],
+                connected_decisions=[],
+                historical_bugs=[],
+                potential_root_causes=["Unregistered failure mode not previously cataloged in project memory"],
+                suggested_checks=suggested_checks,
+                suggested_tests=suggested_tests,
+                evidence_limitations=evidence_limitations,
+                confidence_explanation=confidence_explanation,
+                source=f"deterministic_graph_engine ({reason_for_fallback})",
+                project_id=project_id,
+                detected_component=detected_comp,
+            )
+
+        # Handle grounded evidence
+        dec_101 = next((d for d in decisions if d.get("id") == "DEC-101"), None)
+        bug_101 = next((b for b in bugs if b.get("id") == "BUG-101"), None)
 
         if bug_101:
             potential_root_causes.append(
@@ -212,7 +260,8 @@ Respond with a JSON object containing EXACTLY these keys:
             suggested_tests.append("Run `TEST-101`: `test_refresh_token_validation_and_auth_flow`")
             suggested_tests.append("Execute end-to-end user session token rotation integration test")
         else:
-            potential_root_causes.append("Header transmission failure or authorization token signature verification failure")
+            for b in bugs:
+                potential_root_causes.append(f"Historical incident {b.get('id', 'BUG')}: {b.get('symptom', 'Unknown symptom')}")
             potential_root_causes.append("Route-level security dependency misconfiguration")
             suggested_checks.append("Inspect incoming HTTP request Authorization headers")
             suggested_checks.append("Verify token validation dependency configuration on the affected endpoint")
@@ -234,27 +283,31 @@ Respond with a JSON object containing EXACTLY these keys:
         if bug_101:
             answer_lines.extend([
                 f"- **Incident ID:** `{bug_101.get('id')}` — *{bug_101.get('title')}*",
-                f"  - **Symptom:** {bug_101.get('symptom')}",
-                f"  - **Documented Root Cause:** {bug_101.get('root_cause')}",
+                f"  - **Symptom (Fact):** {bug_101.get('symptom')}",
+                f"  - **Documented Root Cause (Fact):** {bug_101.get('root_cause')}",
                 f"  - **Recorded Fix:** `{bug_101.get('resolution')}`",
-                f"  - **Status:** `{bug_101.get('status')}` (Verified via synthetic regression suite)",
+                f"  - **Verification Status (Fact):** `{bug_101.get('status')}` (Verified via synthetic regression suite)",
             ])
         else:
-            answer_lines.append("- No direct historical bug record found in graph for this query.")
+            for b in bugs:
+                answer_lines.append(f"- **Incident ID:** `{b.get('id')}` — *{b.get('title')}* (Status: `{b.get('status', 'RESOLVED')}`)")
 
         if dec_101:
             answer_lines.extend([
                 "",
                 "#### 2. Connected Technical Decision",
                 f"- **Decision ID:** `{dec_101.get('id')}` — *{dec_101.get('title')}*",
-                f"  - **Justification / Reason:** {dec_101.get('reason')}",
+                f"  - **Justification / Reason (Fact):** {dec_101.get('reason')}",
                 f"  - **Source:** `{dec_101.get('source')}` | **Author:** {dec_101.get('author')}",
                 f"  - **Architectural Context:** The migration from session cookies to stateless JWT bearer tokens introduced separate lifespan requirements for token renewal middleware.",
             ])
+        else:
+            for d in decisions:
+                answer_lines.append(f"- **Decision ID:** `{d.get('id')}` — *{d.get('title')}* (Reason: {d.get('reason', 'N/A')})")
 
         answer_lines.extend([
             "",
-            "#### 3. Potential Root Causes (Hypotheses vs Facts)",
+            "#### 3. Potential Root Causes (Hypotheses vs Documented Facts)",
             "> **Important:** Historical precedent indicates that refactoring authentication previously omitted refresh-token validation middleware. However, this is a **strong hypothesis for investigation**, not confirmed proof of the current error.",
             "",
             *[f"- {cause}" for cause in potential_root_causes],
@@ -266,8 +319,8 @@ Respond with a JSON object containing EXACTLY these keys:
             *[f"- **{t}**" for t in list(set(suggested_tests))],
             "",
             "#### 6. Evidence Limitations & Graph Scope",
-            "- Graph traversal retrieved direct 1-hop and 2-hop relationships from the `Authentication` and `Users API` components.",
-            "- Live server runtime logs and local git diffs are not directly attached; developer verification of the proposed checks is required.",
+            f"- Graph traversal retrieved direct 1-hop and 2-hop relationships from the `{detected_comp}` component.",
+            "- Live ephemeral server runtime logs and local git diffs are not directly attached; developer verification of the proposed checks is required.",
         ])
 
         markdown_answer = "\n".join(answer_lines)
