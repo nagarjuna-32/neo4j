@@ -97,111 +97,213 @@
     .markdown-content ol { list-style-type: decimal; margin-left: 1.25rem; margin-bottom: 0.5rem; color: #e2e8f0; }
     .markdown-content blockquote { border-left: 3px solid #06b6d4; padding-left: 0.75rem; color: #94a3b8; margin: 0.5rem 0; font-style: italic; background: rgba(6, 182, 212, 0.05); padding-top: 0.25rem; padding-bottom: 0.25rem; border-radius: 0 4px 4px 0; }
     .markdown-content code { font-family: 'JetBrains Mono', monospace; background: #1e293b; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.85em; color: #38bdf8; }
+    
+    /* Collapsible sidebar styles */
+    #leftSidebar {
+      transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    #leftSidebar.collapsed {
+      width: 4.5rem !important;
+    }
+    #leftSidebar.collapsed .sidebar-label,
+    #leftSidebar.collapsed .sidebar-section-title,
+    #leftSidebar.collapsed .sidebar-footer-text,
+    #leftSidebar.collapsed .sidebar-badge {
+      display: none !important;
+    }
+    #leftSidebar.collapsed .sidebar-nav-item {
+      justify-content: center !important;
+      padding-left: 0.5rem !important;
+      padding-right: 0.5rem !important;
+    }
   </style>
 </head>
-<body class="min-h-screen flex flex-col bg-[#0b0f19] text-slate-100 overflow-x-hidden">
+<body class="min-h-screen flex flex-col bg-[#0b0f19] text-slate-100 overflow-hidden select-none sm:select-auto">
 
   <!-- Top Navigation Bar -->
-  <header class="border-b border-surface-700/80 bg-surface-900/90 backdrop-blur sticky top-0 z-40 px-4 lg:px-6 py-3 flex items-center justify-between">
+  <header class="h-14 border-b border-surface-700/80 bg-[#090d16]/95 backdrop-blur sticky top-0 z-40 px-3 lg:px-5 flex items-center justify-between">
+    <!-- Left: Brand & Mobile Hamburger -->
     <div class="flex items-center gap-3">
-      <div class="w-9 h-9 rounded-lg bg-gradient-to-tr from-cyan-600 to-blue-500 flex items-center justify-center shadow-lg shadow-cyan-500/20 text-white font-black text-xl">
-        <i data-lucide="shield-alert" class="w-5 h-5 text-white"></i>
-      </div>
-      <div>
-        <div class="flex items-center gap-2">
-          <span class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-cyan-100 to-cyan-400 bg-clip-text text-transparent">CodeBrain AI</span>
-          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800/80 uppercase tracking-wider">v1.0 Production</span>
+      <button onclick="toggleMobileNav()" class="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-surface-800 transition" aria-label="Toggle mobile menu">
+        <i data-lucide="menu" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center gap-2.5 cursor-pointer" onclick="switchTab('overview')">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center shadow-md shadow-cyan-500/20 text-white font-black">
+          <i data-lucide="brain-circuit" class="w-4 h-4 text-white"></i>
         </div>
-        <p class="text-xs text-slate-400 hidden sm:block">Every Bug Has a History</p>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <span class="font-extrabold text-base tracking-tight bg-gradient-to-r from-white via-cyan-100 to-cyan-400 bg-clip-text text-transparent">CodeBrain AI</span>
+          </div>
+          <p class="text-[10px] text-slate-400 leading-none hidden sm:block">Every Bug Has a History</p>
+        </div>
       </div>
     </div>
 
-    <!-- Center Project Selector & Health Badges -->
-    <div class="hidden md:flex items-center gap-3">
-      <div class="flex items-center gap-2 bg-surface-800/90 border border-surface-700 px-3 py-1.5 rounded-lg text-xs">
-        <i data-lucide="folder-git-2" class="w-3.5 h-3.5 text-cyan-400"></i>
-        <span class="text-slate-400">Project:</span>
-        <span id="headerProjectName" class="font-semibold text-slate-200">Sentinel Demo App</span>
+    <!-- Center-Left: Project Selector -->
+    <div class="flex items-center gap-2">
+      <div class="relative flex items-center bg-surface-850 border border-surface-700/80 rounded-lg px-2.5 py-1 text-xs">
+        <i data-lucide="folder-git-2" class="w-3.5 h-3.5 text-cyan-400 mr-2 shrink-0"></i>
+        <span class="text-slate-400 mr-1.5 hidden sm:inline">Project:</span>
+        <select id="projectSelector" onchange="handleProjectChange(this.value)" class="bg-transparent text-slate-200 font-semibold focus:outline-none cursor-pointer text-xs pr-1">
+          <option value="PRJ-SENTINEL" class="bg-surface-850 text-slate-100">Sentinel Demo App</option>
+        </select>
       </div>
+    </div>
 
+    <!-- Right: Status Indicators & Quick Actions -->
+    <div class="flex items-center gap-2 sm:gap-3">
       <!-- Neo4j Connection Pill -->
-      <div id="neo4jStatusBadge" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border bg-amber-950/40 border-amber-800/60 text-amber-300 cursor-pointer" onclick="openHealthModal()" title="Click to view database diagnostics">
+      <div id="neo4jStatusBadge" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border bg-amber-950/40 border-amber-800/60 text-amber-300 cursor-pointer" onclick="openHealthModal()" title="Click to view database diagnostics">
         <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-        <span id="neo4jStatusText">Graph: In-Memory Engine</span>
+        <span id="neo4jStatusText" class="hidden sm:inline">Graph: In-Memory Engine</span>
+        <span class="sm:hidden font-mono text-[10px]">Neo4j</span>
       </div>
 
       <!-- AI Status Pill -->
-      <div id="aiStatusBadge" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border bg-cyan-950/40 border-cyan-800/60 text-cyan-300 cursor-pointer" onclick="openHealthModal()" title="Click to view AI configuration">
+      <div id="aiStatusBadge" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border bg-cyan-950/40 border-cyan-800/60 text-cyan-300 cursor-pointer" onclick="openHealthModal()" title="Click to view AI configuration">
         <i data-lucide="sparkles" class="w-3 h-3 text-cyan-400"></i>
-        <span id="aiStatusText">AI: Deterministic Engine</span>
+        <span id="aiStatusText" class="hidden sm:inline">AI: Deterministic Engine</span>
+        <span class="sm:hidden font-mono text-[10px]">AI</span>
       </div>
-    </div>
 
-    <!-- Right Action Buttons -->
-    <div class="flex items-center gap-2">
-      <button onclick="handleSeedDemo()" id="btnSeedDemo" class="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-surface-800 hover:bg-surface-700 border border-surface-600 text-slate-200 transition">
+      <!-- Seed Demo Button -->
+      <button onclick="handleSeedDemo()" id="btnSeedDemo" class="hidden lg:flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-surface-800 hover:bg-surface-700 border border-surface-600 text-slate-200 transition" title="Idempotent seed demo baseline">
         <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-cyan-400"></i>
         <span>Seed Demo Graph</span>
       </button>
 
-      <button onclick="openMemoryModal()" class="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-md shadow-cyan-900/30 transition">
+      <!-- Primary Action: Capture Memory -->
+      <button onclick="openMemoryModal()" class="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-md shadow-cyan-900/30 transition">
         <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
-        <span>Capture Memory</span>
+        <span class="hidden sm:inline">Capture Memory</span>
       </button>
+
+      <!-- Compact Profile / Quick Settings Menu -->
+      <div class="relative">
+        <button onclick="toggleUserMenu()" id="btnUserMenu" class="flex items-center gap-1.5 p-1 rounded-full bg-surface-800 hover:bg-surface-700 border border-surface-600 transition" aria-label="Developer Profile Menu">
+          <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-cyan-600 to-blue-500 flex items-center justify-center text-white font-bold text-xs shadow-sm">
+            CB
+          </div>
+        </button>
+
+        <!-- Dropdown Popup -->
+        <div id="userMenuDropdown" class="hidden absolute right-0 mt-2 w-56 bg-surface-850 border border-surface-700 rounded-xl shadow-2xl p-2 z-50 text-xs">
+          <div class="px-3 py-2 border-b border-surface-700/60 mb-1">
+            <p class="font-bold text-white">Developer Console</p>
+            <p class="text-[10px] text-slate-400 font-mono">admin@codebrain.dev</p>
+          </div>
+          <button onclick="openHealthModal(); toggleUserMenu();" class="w-full text-left px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-surface-800 flex items-center gap-2">
+            <i data-lucide="sliders" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <span>System Diagnostics</span>
+          </button>
+          <button onclick="handleSeedDemo(); toggleUserMenu();" class="w-full text-left px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-surface-800 flex items-center gap-2">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <span>Seed Demo Graph</span>
+          </button>
+          <button onclick="openMemoryModal(); toggleUserMenu();" class="w-full text-left px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-surface-800 flex items-center gap-2">
+            <i data-lucide="plus-circle" class="w-3.5 h-3.5 text-purple-400"></i>
+            <span>Capture Memory</span>
+          </button>
+          <div class="my-1 border-t border-surface-700/60"></div>
+          <a href="/docs" target="_blank" class="w-full text-left px-3 py-2 rounded-lg text-slate-400 hover:text-cyan-300 hover:bg-surface-800 flex items-center justify-between">
+            <span>OpenAPI Docs</span>
+            <i data-lucide="external-link" class="w-3 h-3"></i>
+          </a>
+        </div>
+      </div>
     </div>
   </header>
 
-  <!-- Summary Statistics Bar -->
-  <div class="bg-surface-850 border-b border-surface-700/60 px-4 lg:px-6 py-2.5 flex items-center justify-between text-xs overflow-x-auto gap-4 custom-scrollbar">
-    <div class="flex items-center gap-6 text-slate-300 whitespace-nowrap">
-      <div class="flex items-center gap-2">
-        <span class="text-slate-400">Total Nodes:</span>
-        <span id="statNodes" class="font-bold text-white bg-surface-750 px-2 py-0.5 rounded border border-surface-600">--</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <span class="text-slate-400">Total Relationships:</span>
-        <span id="statEdges" class="font-bold text-white bg-surface-750 px-2 py-0.5 rounded border border-surface-600">--</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <span class="text-slate-400">Components:</span>
-        <span id="statComponents" class="font-bold text-cyan-400 bg-surface-750 px-2 py-0.5 rounded border border-surface-600">--</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <span class="text-slate-400">Recorded Incidents:</span>
-        <span id="statBugs" class="font-bold text-red-400 bg-surface-750 px-2 py-0.5 rounded border border-surface-600">--</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <span class="text-slate-400">Technical Decisions:</span>
-        <span id="statDecisions" class="font-bold text-purple-400 bg-surface-750 px-2 py-0.5 rounded border border-surface-600">--</span>
-      </div>
-    </div>
+  <!-- Mobile Drawer Backdrop -->
+  <div id="mobileNavOverlay" onclick="closeMobileNav()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 hidden md:hidden transition-opacity"></div>
 
-    <!-- Active Navigation Tabs -->
-    <div class="flex items-center gap-1 bg-surface-800 p-1 rounded-lg border border-surface-700 shrink-0">
-      <button onclick="switchTab('overview')" id="tabBtn-overview" class="tab-button px-3 py-1 rounded-md text-xs font-semibold bg-cyan-600 text-white transition flex items-center gap-1.5" aria-label="Overview Dashboard">
-        <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
-        <span>Overview</span>
-      </button>
-      <button onclick="switchTab('graph')" id="tabBtn-graph" class="tab-button px-3 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-1.5" aria-label="Knowledge Graph Explorer">
-        <i data-lucide="network" class="w-3.5 h-3.5"></i>
-        <span>Graph Explorer</span>
-      </button>
-      <button onclick="switchTab('debug')" id="tabBtn-debug" class="tab-button px-3 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-1.5" aria-label="Contextual AI Debugger">
-        <i data-lucide="terminal" class="w-3.5 h-3.5"></i>
-        <span>AI Debugger</span>
-      </button>
-      <button onclick="switchTab('impact')" id="tabBtn-impact" class="tab-button px-3 py-1 rounded-md text-xs font-medium text-slate-400 hover:text-white transition flex items-center gap-1.5" aria-label="Change Impact Analysis">
-        <i data-lucide="git-pull-request" class="w-3.5 h-3.5"></i>
-        <span>Change Impact</span>
-      </button>
-    </div>
-  </div>
+  <!-- Body Content: Sidebar + Main Workspaces Container -->
+  <div class="flex-1 flex overflow-hidden relative">
+    
+    <!-- Left Vertical Collapsible Sidebar -->
+    <aside id="leftSidebar" class="fixed md:static top-14 left-0 h-[calc(100vh-3.5rem)] w-64 bg-surface-900 border-r border-surface-700/80 z-30 flex flex-col justify-between shrink-0 transform -translate-x-full md:translate-x-0 transition-all duration-300 shadow-xl md:shadow-none">
+      <!-- Top Section: Workspaces Navigation -->
+      <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-6">
+        <div>
+          <div class="sidebar-section-title px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            Workspaces
+          </div>
+          <nav class="space-y-1" role="navigation" aria-label="Main Navigation">
+            <!-- 1. Overview -->
+            <button onclick="switchTab('overview')" id="sidebarBtn-overview" class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold bg-cyan-950/70 border border-cyan-800/80 text-cyan-300 shadow-sm transition group" title="Overview — Dashboard metrics and project summary" aria-label="Overview Dashboard">
+              <i data-lucide="layout-dashboard" class="w-4 h-4 shrink-0 text-cyan-400 group-hover:scale-110 transition"></i>
+              <span class="sidebar-label truncate">Overview</span>
+            </button>
 
-  <!-- Main Workspace Area -->
-  <main class="flex-1 flex overflow-hidden relative">
+            <!-- 2. Graph Explorer -->
+            <button onclick="switchTab('graph')" id="sidebarBtn-graph" class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-100 hover:bg-surface-800/70 border border-transparent transition group" title="Graph Explorer — Interactive Neo4j knowledge graph" aria-label="Graph Explorer">
+              <i data-lucide="network" class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-cyan-400 transition"></i>
+              <span class="sidebar-label truncate">Graph Explorer</span>
+            </button>
 
-    <!-- ================= WORKSPACE 1: OVERVIEW DASHBOARD ================= -->
-    <div id="tabContent-overview" class="tab-content flex-1 flex flex-col h-[calc(100vh-105px)] w-full overflow-y-auto custom-scrollbar p-4 lg:p-6 space-y-6">
+            <!-- 3. AI Debugger -->
+            <button onclick="switchTab('debug')" id="sidebarBtn-debug" class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-100 hover:bg-surface-800/70 border border-transparent transition group" title="AI Debugger — Evidence-grounded debugging assistant" aria-label="AI Debugger">
+              <i data-lucide="terminal" class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-blue-400 transition"></i>
+              <span class="sidebar-label truncate">AI Debugger</span>
+            </button>
+
+            <!-- 4. Change Impact -->
+            <button onclick="switchTab('impact')" id="sidebarBtn-impact" class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-100 hover:bg-surface-800/70 border border-transparent transition group" title="Change Impact — Analyze potentially affected components and tests" aria-label="Change Impact">
+              <i data-lucide="git-pull-request" class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-amber-400 transition"></i>
+              <span class="sidebar-label truncate">Change Impact</span>
+            </button>
+
+            <!-- 5. Project Memory -->
+            <button onclick="switchTab('memory')" id="sidebarBtn-memory" class="sidebar-nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-100 hover:bg-surface-800/70 border border-transparent transition group" title="Project Memory — Decisions, bugs, fixes, dependencies, and tests" aria-label="Project Memory">
+              <i data-lucide="brain-circuit" class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-purple-400 transition"></i>
+              <span class="sidebar-label truncate">Project Memory</span>
+            </button>
+          </nav>
+        </div>
+
+        <!-- Quick System Tools -->
+        <div>
+          <div class="sidebar-section-title px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            System & Tools
+          </div>
+          <div class="space-y-1">
+            <button onclick="openMemoryModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold bg-gradient-to-r from-cyan-600/15 to-blue-600/15 hover:from-cyan-600/25 hover:to-blue-600/25 border border-cyan-800/50 text-cyan-300 transition group" title="Log Architectural Decision or Incident" aria-label="Capture Memory">
+              <i data-lucide="plus-circle" class="w-4 h-4 shrink-0 text-cyan-400"></i>
+              <span class="sidebar-label truncate">+ Log Memory</span>
+            </button>
+
+            <button onclick="handleSeedDemo()" class="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-surface-800/60 border border-transparent transition group" title="Seed Demo Graph Baseline" aria-label="Seed Demo Graph">
+              <i data-lucide="refresh-cw" class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-cyan-400 transition"></i>
+              <span class="sidebar-label truncate">Re-seed Baseline</span>
+            </button>
+
+            <button onclick="openHealthModal()" class="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-surface-800/60 border border-transparent transition group" title="View System Diagnostics & Database Logs" aria-label="System Diagnostics">
+              <i data-lucide="sliders" class="w-4 h-4 shrink-0 text-slate-400 group-hover:text-cyan-400 transition"></i>
+              <span class="sidebar-label truncate">Diagnostics</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar Footer: Collapse Toggle & Status -->
+      <div class="p-3 border-t border-surface-700/80 bg-surface-900/60 flex items-center justify-between">
+        <div class="sidebar-footer-text text-[11px] text-slate-400 truncate flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+          <span class="font-mono text-slate-300 text-[10px]">v1.0 Production</span>
+        </div>
+        <button onclick="toggleSidebarCollapse()" id="btnSidebarCollapse" class="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-surface-800 transition" title="Toggle Sidebar Width" aria-label="Toggle Sidebar Width">
+          <i data-lucide="panel-left-close" id="sidebarCollapseIcon" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Workspaces Container -->
+    <main class="flex-1 flex overflow-hidden relative min-w-0">
+
+      <!-- ================= WORKSPACE 1: OVERVIEW DASHBOARD ================= -->
+      <div id="tabContent-overview" class="tab-content flex-1 flex flex-col h-full w-full overflow-y-auto custom-scrollbar p-4 lg:p-6 space-y-6">
       
       <!-- Top Hero / Project Banner -->
       <div class="glass-card p-6 rounded-2xl border border-cyan-800/40 relative overflow-hidden">
@@ -434,7 +536,7 @@
     </div>
 
     <!-- ================= WORKSPACE 2: KNOWLEDGE GRAPH EXPLORER ================= -->
-    <div id="tabContent-graph" class="tab-content flex-1 hidden flex-col md:flex-row h-[calc(100vh-105px)] w-full">
+    <div id="tabContent-graph" class="tab-content flex-1 hidden flex-col md:flex-row h-full w-full">
       
       <!-- Graph Canvas Container -->
       <div class="flex-1 relative h-full flex flex-col">
@@ -549,7 +651,7 @@
     </div>
 
     <!-- ================= TAB 2: CONTEXTUAL DEBUGGING ASSISTANT ================= -->
-    <div id="tabContent-debug" class="tab-content flex-1 hidden flex-col md:flex-row h-[calc(100vh-105px)] w-full overflow-hidden">
+    <div id="tabContent-debug" class="tab-content flex-1 hidden flex-col md:flex-row h-full w-full overflow-hidden">
       
       <!-- Left: Question Input & Controls -->
       <div class="w-full md:w-5/12 border-r border-surface-700 bg-surface-850 p-6 flex flex-col justify-between overflow-y-auto custom-scrollbar">
@@ -738,7 +840,7 @@
     </div>
 
     <!-- ================= TAB 3: CHANGE IMPACT ANALYSIS ================= -->
-    <div id="tabContent-impact" class="tab-content flex-1 hidden flex-col md:flex-row h-[calc(100vh-105px)] w-full overflow-hidden">
+    <div id="tabContent-impact" class="tab-content flex-1 hidden flex-col md:flex-row h-full w-full overflow-hidden">
       
       <!-- Left: Component Selection -->
       <div class="w-full md:w-4/12 border-r border-surface-700 bg-surface-850 p-6 flex flex-col justify-between overflow-y-auto custom-scrollbar">
@@ -899,7 +1001,60 @@
       </div>
     </div>
 
+    <!-- ================= WORKSPACE 5: PROJECT MEMORY REPOSITORY ================= -->
+    <div id="tabContent-memory" class="tab-content flex-1 hidden flex-col h-full w-full overflow-y-auto custom-scrollbar p-4 lg:p-6 space-y-6">
+      
+      <!-- Top Banner -->
+      <div class="glass-card p-5 rounded-2xl border border-cyan-800/40 relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div class="absolute -right-12 -top-12 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="relative z-10">
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-purple-950 text-purple-300 border border-purple-800">Knowledge Graph Repository</span>
+            <span class="text-xs text-slate-400 font-mono">Project Memory Mesh</span>
+          </div>
+          <h2 class="text-xl font-bold text-white tracking-tight">Documented Engineering Memory</h2>
+          <p class="text-xs text-slate-300 max-w-2xl mt-1 leading-relaxed">
+            All architectural decisions, historical bugs, resolved fixes, dependencies, and verified regression test suites persisted in Neo4j with explicit relationship links.
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2 relative z-10 shrink-0">
+          <button onclick="handleSeedDemo()" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface-800 hover:bg-surface-750 border border-surface-600 text-xs font-semibold text-slate-200 transition">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <span>Seed Demo Baseline</span>
+          </button>
+          <button onclick="openMemoryModal()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-xs font-semibold text-white shadow-lg shadow-cyan-900/30 transition">
+            <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+            <span>Capture New Memory</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Search & Category Filters -->
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-3 bg-surface-850 p-3.5 rounded-2xl border border-surface-700">
+        <div class="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto custom-scrollbar">
+          <button onclick="filterMemoryWorkspace('all')" class="memory-filter-btn px-3 py-1.5 rounded-xl text-xs font-semibold bg-cyan-600 text-white transition" data-filter="all">All Records</button>
+          <button onclick="filterMemoryWorkspace('Decision')" class="memory-filter-btn px-3 py-1.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition" data-filter="Decision">Decisions (ADRs)</button>
+          <button onclick="filterMemoryWorkspace('Bug')" class="memory-filter-btn px-3 py-1.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition" data-filter="Bug">Bugs & Incidents</button>
+          <button onclick="filterMemoryWorkspace('Fix')" class="memory-filter-btn px-3 py-1.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition" data-filter="Fix">Resolved Fixes</button>
+          <button onclick="filterMemoryWorkspace('Dependency')" class="memory-filter-btn px-3 py-1.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition" data-filter="Dependency">Dependencies</button>
+          <button onclick="filterMemoryWorkspace('Test')" class="memory-filter-btn px-3 py-1.5 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition" data-filter="Test">Regression Tests</button>
+        </div>
+
+        <div class="w-full sm:w-72 relative">
+          <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5"></i>
+          <input type="text" id="memorySearchInput" oninput="handleMemorySearch(this.value)" placeholder="Search memory records..." class="w-full pl-8 pr-3 py-1.5 rounded-xl bg-surface-800 border border-surface-700 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500">
+        </div>
+      </div>
+
+      <!-- Memory Cards Grid -->
+      <div id="memoryCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Injected dynamically via JS from currentGraphData -->
+      </div>
+    </div>
+
   </main>
+</div>
 
   <!-- ================= MODAL: CAPTURE MEMORY ================= -->
   <div id="memoryModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4">

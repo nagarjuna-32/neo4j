@@ -51,16 +51,133 @@ const NODE_COLORS = {
   Default: '#64748b'      // Slate
 };
 
+let currentProjectId = 'PRJ-SENTINEL';
+let currentMemoryFilter = 'all';
+let currentMemorySearch = '';
+
 // Initialize Application on DOM Ready
 document.addEventListener('DOMContentLoaded', async () => {
   if (window.lucide) {
     lucide.createIcons();
   }
+  
+  // Restore sidebar collapse state
+  const isCollapsed = localStorage.getItem('codebrain_sidebar_collapsed') === 'true';
+  const sidebar = document.getElementById('leftSidebar');
+  const collapseIcon = document.getElementById('sidebarCollapseIcon');
+  if (isCollapsed && sidebar) {
+    sidebar.classList.add('collapsed');
+    if (collapseIcon) collapseIcon.setAttribute('data-lucide', 'panel-left-open');
+  }
+
+  // Close user menu on outside click
+  window.addEventListener('click', (e) => {
+    const userMenu = document.getElementById('userMenuDropdown');
+    const userBtn = document.getElementById('btnUserMenu');
+    if (userMenu && !userMenu.classList.contains('hidden')) {
+      if (userBtn && !userBtn.contains(e.target) && !userMenu.contains(e.target)) {
+        userMenu.classList.add('hidden');
+      }
+    }
+  });
+
   await checkHealth();
-  await loadGraph();
-  await loadActivity();
+  await populateProjectSelector();
+  await loadGraph(currentProjectId);
+  await loadActivity(currentProjectId);
   switchTab('overview');
 });
+
+// Dynamic Project Selector Population
+async function populateProjectSelector() {
+  const select = document.getElementById('projectSelector');
+  if (!select) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/projects`);
+    if (!res.ok) return;
+    const projects = await res.json();
+    if (Array.isArray(projects) && projects.length > 0) {
+      select.innerHTML = projects.map(p => `
+        <option value="${p.id}" class="bg-surface-850 text-slate-100" ${p.id === currentProjectId ? 'selected' : ''}>
+          ${p.name || p.id}
+        </option>
+      `).join('');
+    }
+  } catch (err) {
+    console.warn('Could not populate projects list, using default:', err);
+  }
+}
+
+async function handleProjectChange(projectId) {
+  if (!projectId || projectId === currentProjectId) return;
+  currentProjectId = projectId;
+  showToast(`Switching to project: ${projectId}`, 'info');
+
+  const headerProjectName = document.getElementById('headerProjectName');
+  if (headerProjectName) headerProjectName.innerText = projectId;
+
+  await loadGraph(projectId);
+  await loadActivity(projectId);
+}
+
+// Sidebar Collapse / Expand Toggle
+function toggleSidebarCollapse() {
+  const sidebar = document.getElementById('leftSidebar');
+  const collapseIcon = document.getElementById('sidebarCollapseIcon');
+  if (!sidebar) return;
+
+  sidebar.classList.toggle('collapsed');
+  const isCollapsed = sidebar.classList.contains('collapsed');
+  localStorage.setItem('codebrain_sidebar_collapsed', isCollapsed);
+
+  if (collapseIcon) {
+    collapseIcon.setAttribute('data-lucide', isCollapsed ? 'panel-left-open' : 'panel-left-close');
+    if (window.lucide) lucide.createIcons();
+  }
+
+  // Resize graph canvas if visible
+  setTimeout(() => {
+    if (cy) {
+      cy.resize();
+      cy.fit(undefined, 40);
+    }
+  }, 240);
+}
+
+// Mobile Slide-Out Drawer Navigation
+function toggleMobileNav() {
+  const sidebar = document.getElementById('leftSidebar');
+  const overlay = document.getElementById('mobileNavOverlay');
+  if (!sidebar || !overlay) return;
+
+  const isClosed = sidebar.classList.contains('-translate-x-full');
+  if (isClosed) {
+    sidebar.classList.remove('-translate-x-full');
+    sidebar.classList.add('translate-x-0');
+    overlay.classList.remove('hidden');
+  } else {
+    closeMobileNav();
+  }
+}
+
+function closeMobileNav() {
+  const sidebar = document.getElementById('leftSidebar');
+  const overlay = document.getElementById('mobileNavOverlay');
+  if (sidebar) {
+    sidebar.classList.add('-translate-x-full');
+    sidebar.classList.remove('translate-x-0');
+  }
+  if (overlay) {
+    overlay.classList.add('hidden');
+  }
+}
+
+// User Profile / Settings Menu Toggle
+function toggleUserMenu() {
+  const dropdown = document.getElementById('userMenuDropdown');
+  if (dropdown) dropdown.classList.toggle('hidden');
+}
 
 // Toast Notification System
 function showToast(message, type = 'info') {
@@ -86,25 +203,49 @@ function showToast(message, type = 'info') {
   }, 4000);
 }
 
-// Tab Switching
+// Enhanced Workspace Tab Switching
 function switchTab(tabName) {
-  document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-  document.querySelectorAll('.tab-button').forEach(btn => {
-    btn.classList.remove('bg-cyan-600', 'text-white');
-    btn.classList.add('text-slate-400');
+  // Hide all workspace content containers
+  document.querySelectorAll('.tab-content').forEach(el => {
+    el.classList.add('hidden');
+    el.classList.remove('flex');
   });
 
+  // Reset all sidebar navigation item styles
+  document.querySelectorAll('.sidebar-nav-item').forEach(btn => {
+    btn.classList.remove('bg-cyan-950/70', 'border-cyan-800/80', 'text-cyan-300', 'shadow-sm', 'font-semibold');
+    btn.classList.add('text-slate-400', 'font-medium', 'border-transparent');
+    const icon = btn.querySelector('i');
+    if (icon) {
+      icon.classList.remove('text-cyan-400', 'text-blue-400', 'text-amber-400', 'text-purple-400');
+      icon.classList.add('text-slate-400');
+    }
+  });
+
+  // Activate target content
   const targetContent = document.getElementById(`tabContent-${tabName}`);
-  const targetBtn = document.getElementById(`tabBtn-${tabName}`);
   if (targetContent) {
     targetContent.classList.remove('hidden');
     targetContent.classList.add('flex');
   }
-  if (targetBtn) {
-    targetBtn.classList.remove('text-slate-400');
-    targetBtn.classList.add('bg-cyan-600', 'text-white');
+
+  // Activate target sidebar button
+  const targetSidebarBtn = document.getElementById(`sidebarBtn-${tabName}`);
+  if (targetSidebarBtn) {
+    targetSidebarBtn.classList.remove('text-slate-400', 'font-medium', 'border-transparent');
+    targetSidebarBtn.classList.add('bg-cyan-950/70', 'border-cyan-800/80', 'text-cyan-300', 'shadow-sm', 'font-semibold');
+    const icon = targetSidebarBtn.querySelector('i');
+    if (icon) {
+      icon.classList.remove('text-slate-400');
+      const activeColor = tabName === 'debug' ? 'text-blue-400'
+                        : tabName === 'impact' ? 'text-amber-400'
+                        : tabName === 'memory' ? 'text-purple-400'
+                        : 'text-cyan-400';
+      icon.classList.add(activeColor);
+    }
   }
 
+  // Workspace-specific initializations
   if (tabName === 'graph') {
     setTimeout(() => {
       if (cy) {
@@ -114,7 +255,11 @@ function switchTab(tabName) {
         initCytoscape(currentGraphData);
       }
     }, 120);
+  } else if (tabName === 'memory') {
+    renderMemoryWorkspace(currentGraphData);
   }
+
+  closeMobileNav();
   if (window.lucide) lucide.createIcons();
 }
 
@@ -1192,9 +1337,9 @@ async function handleSaveMemory(evt) {
 }
 
 // ================= ACTIVITY TIMELINE =================
-async function loadActivity() {
+async function loadActivity(projectId = currentProjectId) {
   try {
-    const res = await fetch(`${API_BASE}/api/activity?project_id=PRJ-SENTINEL`);
+    const res = await fetch(`${API_BASE}/api/activity?project_id=${encodeURIComponent(projectId)}`);
     if (!res.ok) return;
     const activities = await res.json();
 
@@ -1245,8 +1390,10 @@ async function loadActivity() {
 // ================= SEED DEMO GRAPH =================
 async function handleSeedDemo() {
   const btn = document.getElementById('btnSeedDemo');
-  btn.disabled = true;
-  btn.classList.add('opacity-50');
+  if (btn) {
+    btn.disabled = true;
+    btn.classList.add('opacity-50');
+  }
 
   try {
     const res = await fetch(`${API_BASE}/api/seed`, { method: 'POST' });
@@ -1255,13 +1402,123 @@ async function handleSeedDemo() {
 
     showToast(`Seeded demo graph baseline (${data.database})`, 'success');
     await checkHealth();
-    await loadGraph();
-    await loadActivity();
+    await loadGraph(currentProjectId);
+    await loadActivity(currentProjectId);
   } catch (err) {
     console.error('Seeding error:', err);
     showToast(`Seed failed: ${err.message}`, 'error');
   } finally {
-    btn.disabled = false;
-    btn.classList.remove('opacity-50');
+    if (btn) {
+      btn.disabled = false;
+      btn.classList.remove('opacity-50');
+    }
   }
+}
+
+// ================= PROJECT MEMORY WORKSPACE =================
+function filterMemoryWorkspace(category) {
+  currentMemoryFilter = category;
+  document.querySelectorAll('.memory-filter-btn').forEach(btn => {
+    if (btn.getAttribute('data-filter') === category) {
+      btn.classList.remove('bg-surface-800', 'text-slate-400');
+      btn.classList.add('bg-cyan-600', 'text-white', 'font-semibold');
+    } else {
+      btn.classList.remove('bg-cyan-600', 'text-white', 'font-semibold');
+      btn.classList.add('bg-surface-800', 'text-slate-400');
+    }
+  });
+  renderMemoryWorkspace(currentGraphData);
+}
+
+function handleMemorySearch(query) {
+  currentMemorySearch = (query || '').trim().toLowerCase();
+  renderMemoryWorkspace(currentGraphData);
+}
+
+function renderMemoryWorkspace(data = currentGraphData) {
+  const grid = document.getElementById('memoryCardsGrid');
+  if (!grid) return;
+
+  const nodes = (data && data.nodes) ? data.nodes : [];
+  
+  const items = nodes.filter(n => {
+    const label = n.label || (n.labels && n.labels[0]) || '';
+    if (label === 'Project' || label === 'Developer') return false;
+    if (currentMemoryFilter !== 'all' && label !== currentMemoryFilter) return false;
+    if (currentMemorySearch) {
+      const idMatch = (n.id || '').toLowerCase().includes(currentMemorySearch);
+      const titleMatch = (n.properties?.title || n.properties?.name || '').toLowerCase().includes(currentMemorySearch);
+      const descMatch = (n.properties?.description || n.properties?.symptom || n.properties?.root_cause || n.properties?.reason || '').toLowerCase().includes(currentMemorySearch);
+      return idMatch || titleMatch || descMatch;
+    }
+    return true;
+  });
+
+  if (items.length === 0) {
+    grid.innerHTML = `
+      <div class="col-span-full py-12 text-center bg-surface-850 rounded-2xl border border-surface-700 p-8">
+        <i data-lucide="inbox" class="w-8 h-8 text-slate-500 mx-auto mb-2"></i>
+        <p class="font-bold text-slate-300 text-sm">No memory records found</p>
+        <p class="text-xs text-slate-500 mt-1">Try clearing filters or search query, or capture a new architectural memory.</p>
+        <button onclick="openMemoryModal()" class="mt-4 px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold shadow-lg">
+          + Capture Project Memory
+        </button>
+      </div>
+    `;
+    if (window.lucide) lucide.createIcons();
+    return;
+  }
+
+  grid.innerHTML = items.map(n => {
+    const label = n.label || (n.labels && n.labels[0]) || 'Memory';
+    const p = n.properties || {};
+    const color = NODE_COLORS[label] || '#06b6d4';
+    const border = label === 'Decision' ? 'border-purple-800/60 bg-purple-950/15'
+                 : label === 'Bug' ? 'border-red-800/60 bg-red-950/15'
+                 : label === 'Fix' ? 'border-emerald-800/60 bg-emerald-950/15'
+                 : label === 'Dependency' ? 'border-amber-800/60 bg-amber-950/15'
+                 : label === 'Test' ? 'border-lime-800/60 bg-lime-950/15'
+                 : 'border-cyan-800/60 bg-cyan-950/15';
+
+    const title = p.title || p.name || n.id;
+    const desc = p.reason || p.root_cause || p.description || p.symptom || 'Linked graph entity in project memory mesh';
+    const badge = p.author || p.status || p.test_type || (p.version ? `v${p.version}` : 'Verified');
+
+    return `
+      <div class="glass-card p-4 rounded-xl border ${border} flex flex-col justify-between hover:border-cyan-500/60 transition group">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-mono text-xs font-bold" style="color: ${color}">${n.id}</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface-800 border border-surface-600 text-slate-300">${label}</span>
+          </div>
+          <h4 class="font-bold text-sm text-slate-100 group-hover:text-cyan-300 transition leading-snug">${title}</h4>
+          <p class="text-xs text-slate-400 mt-2 line-clamp-3 leading-relaxed">${desc}</p>
+        </div>
+        <div class="mt-4 pt-3 border-t border-surface-700/60 flex items-center justify-between text-xs">
+          <span class="text-[10px] text-slate-500 font-mono">${badge}</span>
+          <button onclick="inspectEntityFromMemory('${n.id}')" class="text-cyan-400 hover:text-cyan-300 font-semibold text-[11px] flex items-center gap-1">
+            <span>Inspect in Graph</span>
+            <i data-lucide="arrow-right" class="w-3 h-3"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  if (window.lucide) lucide.createIcons();
+}
+
+function inspectEntityFromMemory(nodeId) {
+  switchTab('graph');
+  setTimeout(() => {
+    if (cy) {
+      const node = cy.getElementById(nodeId);
+      if (node && node.length > 0) {
+        cy.nodes().removeClass('selected');
+        node.addClass('selected');
+        cy.animate({ center: { eles: node }, zoom: 1.4, duration: 400 });
+        selectNode(node.data());
+      }
+    }
+  }, 200);
 }
