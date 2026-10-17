@@ -229,3 +229,53 @@ Follow these 9 steps during the live hackathon demonstration:
   - Automated AST parsing to extract function-to-function `[:CALLS]` call graphs from Git commits.
   - Native GitHub App webhook integration to automatically ingest Pull Request descriptions and Architecture Decision Records (ADRs).
   - Graph-RAG vector embeddings on incident post-mortems for semantic sub-graph clustering.
+
+---
+
+## 13. Production Deployment Guide (Phase 8)
+
+### Recommended Hosting: Render.com (Web Service)
+
+DevGraph Sentinel is pre-configured for production hosting on [Render](https://render.com), Railway, or any Linux/container PaaS.
+
+#### Render Deployment Configuration:
+
+| Configuration Field | Recommended Production Value |
+|---|---|
+| **Environment** | `Python` |
+| **Branch** | `main` |
+| **Build Command** | `pip install -r requirements.txt` |
+| **Start Command** | `uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT` |
+| **Health Check Path** | `/health` (or `/healthz`) |
+
+#### Production Environment Variables:
+
+| Variable | Required | Description |
+|---|:---:|---|
+| `PORT` | Auto | Assigned automatically by Render |
+| `AUTO_SEED` | No | `false` (default) — prevents automatic synthetic data overwrite on server restart |
+| `NEO4J_URI` | Optional | e.g. `neo4j+s://<dbid>.databases.neo4j.io` (uses in-memory graph engine if omitted) |
+| `NEO4J_USERNAME` | Optional | `neo4j` |
+| `NEO4J_PASSWORD` | Optional | Neo4j AuraDB instance password |
+| `NEO4J_DATABASE` | Optional | `neo4j` |
+| `OPENAI_API_KEY` | Optional | `sk-...` (uses deterministic evidence-grounded fallback engine if omitted) |
+| `OPENAI_MODEL` | Optional | `gpt-4.1-mini` |
+
+#### Manual Seeding After Production Deployment:
+
+To preserve production database integrity, automatic seeding on startup is disabled (`AUTO_SEED=false`). To seed the baseline Sentinel Demo App:
+
+**Option A — Via Web UI:**
+Click the **"Seed Demo Graph"** or **"Re-seed Baseline"** button on the top navigation bar or the Overview Dashboard.
+
+**Option B — Via Terminal / cURL:**
+```bash
+curl -X POST https://<your-render-url>.onrender.com/api/seed
+```
+
+#### Production Verification Endpoints:
+- **Deployment Health Probe:** `GET /health` or `GET /healthz`
+- **System Diagnostics:** `GET /api/health`
+- **Interactive OpenAPI Explorer:** `GET /docs`
+- **Web Dashboard:** `GET /`
+

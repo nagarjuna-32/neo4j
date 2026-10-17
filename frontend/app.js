@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await checkHealth();
   await loadGraph();
   await loadActivity();
+  switchTab('overview');
 });
 
 // Toast Notification System
@@ -73,11 +74,15 @@ function switchTab(tabName) {
     targetBtn.classList.add('bg-cyan-600', 'text-white');
   }
 
-  if (tabName === 'graph' && cy) {
+  if (tabName === 'graph') {
     setTimeout(() => {
-      cy.resize();
-      cy.fit(undefined, 40);
-    }, 100);
+      if (cy) {
+        cy.resize();
+        cy.fit(undefined, 40);
+      } else if (currentGraphData && currentGraphData.nodes) {
+        initCytoscape(currentGraphData);
+      }
+    }, 120);
   }
   if (window.lucide) lucide.createIcons();
 }
@@ -116,6 +121,24 @@ async function checkHealth() {
     document.getElementById('diagAIStatus').innerText = data.ai_status;
     document.getElementById('diagAIModel').innerText = `Model: ${data.ai_model}`;
 
+    // Overview Banner Diagnostics Ribbon
+    const ovNeoStatus = document.getElementById('overviewNeoStatus');
+    const ovNeoDot = document.getElementById('overviewNeoDot');
+    if (ovNeoStatus) {
+      ovNeoStatus.innerText = data.neo4j_connected ? 'Neo4j AuraDB (Live Cypher)' : 'In-Memory Engine';
+    }
+    if (ovNeoDot) {
+      ovNeoDot.className = data.neo4j_connected ? 'w-2 h-2 rounded-full bg-emerald-400' : 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+    }
+    const ovAIStatus = document.getElementById('overviewAIStatus');
+    if (ovAIStatus) {
+      ovAIStatus.innerText = data.ai_configured ? data.ai_model : 'Deterministic Grounded';
+    }
+    const ovStorage = document.getElementById('overviewStorageBackend');
+    if (ovStorage) {
+      ovStorage.innerText = data.storage_backend;
+    }
+
     const diagList = document.getElementById('diagList');
     diagList.innerHTML = '';
     (data.diagnostics || []).forEach(diag => {
@@ -139,6 +162,76 @@ function closeHealthModal() {
   document.getElementById('healthModal').classList.remove('flex');
 }
 
+// Render Overview Workspace Cards
+function renderOverviewCards(data) {
+  const decList = document.getElementById('overviewDecisionsList');
+  const bugsList = document.getElementById('overviewBugsList');
+  if (!decList || !bugsList) return;
+
+  decList.innerHTML = '';
+  bugsList.innerHTML = '';
+
+  const nodes = data.nodes || [];
+
+  // Technical Decisions
+  const decisions = nodes.filter(n => (n.labels && n.labels.includes('Decision')) || n.label === 'Decision');
+  if (decisions.length === 0) {
+    decList.innerHTML = '<p class="text-xs text-slate-500 italic p-3 bg-surface-800 rounded-lg">No technical decisions recorded yet.</p>';
+  } else {
+    decisions.forEach(d => {
+      const p = d.properties || {};
+      const card = document.createElement('div');
+      card.className = 'p-3 rounded-xl border border-purple-900/40 bg-purple-950/20 text-xs space-y-1.5 hover:border-purple-700 transition';
+      card.innerHTML = `
+        <div class="flex items-center justify-between">
+          <span class="font-mono font-bold text-purple-400">${d.id}</span>
+          <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-900/80 text-purple-200">${p.author || 'Engineering'}</span>
+        </div>
+        <p class="font-semibold text-slate-100">${p.title || d.id}</p>
+        <p class="text-[11px] text-slate-400 leading-relaxed"><strong class="text-purple-300">Rationale:</strong> ${p.reason || p.description || 'Architectural choice'}</p>
+        <div class="pt-1 flex items-center justify-between border-t border-purple-900/30">
+          <span class="text-[10px] text-slate-500">${p.timestamp ? new Date(p.timestamp).toLocaleDateString() : 'Active Baseline'}</span>
+          <button onclick="setPrompt('What architectural trade-offs motivated decision ${d.id} (${p.title || ''})?', 'Authentication'); switchTab('debug');" class="text-xs text-purple-300 hover:text-purple-200 font-semibold flex items-center gap-1">
+            <span>Debug with AI</span>
+            <i data-lucide="arrow-right" class="w-3 h-3"></i>
+          </button>
+        </div>
+      `;
+      decList.appendChild(card);
+    });
+  }
+
+  // Incidents & Regressions
+  const bugs = nodes.filter(n => (n.labels && n.labels.includes('Bug')) || n.label === 'Bug');
+  if (bugs.length === 0) {
+    bugsList.innerHTML = '<p class="text-xs text-slate-500 italic p-3 bg-surface-800 rounded-lg">No historical incidents recorded yet.</p>';
+  } else {
+    bugs.forEach(b => {
+      const p = b.properties || {};
+      const card = document.createElement('div');
+      card.className = 'p-3 rounded-xl border border-red-900/40 bg-red-950/20 text-xs space-y-1.5 hover:border-red-700 transition';
+      card.innerHTML = `
+        <div class="flex items-center justify-between">
+          <span class="font-mono font-bold text-red-400">${b.id}</span>
+          <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-900/80 text-red-200 uppercase">${p.status || 'Remediated'}</span>
+        </div>
+        <p class="font-semibold text-slate-100">${p.title || b.id}</p>
+        <p class="text-[11px] text-slate-400 leading-relaxed"><strong class="text-red-300">Root Cause:</strong> ${p.root_cause || p.symptom || 'Incident record'}</p>
+        <div class="pt-1 flex items-center justify-between border-t border-red-900/30">
+          <span class="text-[10px] text-slate-500">${p.component || 'Authentication'}</span>
+          <button onclick="switchTab('impact');" class="text-xs text-red-300 hover:text-red-200 font-semibold flex items-center gap-1">
+            <span>Analyze Impact</span>
+            <i data-lucide="arrow-right" class="w-3 h-3"></i>
+          </button>
+        </div>
+      `;
+      bugsList.appendChild(card);
+    });
+  }
+
+  if (window.lucide) lucide.createIcons();
+}
+
 // Load and Render Knowledge Graph
 async function loadGraph(projectId = 'PRJ-SENTINEL') {
   try {
@@ -149,12 +242,34 @@ async function loadGraph(projectId = 'PRJ-SENTINEL') {
 
     // Update Header Summary Stats
     const stats = data.stats || {};
-    document.getElementById('statNodes').innerText = stats.total_nodes ?? data.nodes.length;
-    document.getElementById('statEdges').innerText = stats.total_edges ?? data.edges.length;
-    document.getElementById('statComponents').innerText = stats.components ?? 0;
-    document.getElementById('statBugs').innerText = stats.bugs ?? 0;
-    document.getElementById('statDecisions').innerText = stats.decisions ?? 0;
+    const totalNodes = stats.total_nodes ?? data.nodes.length;
+    const totalEdges = stats.total_edges ?? data.edges.length;
+    const countComp = stats.components ?? (data.nodes || []).filter(n => n.label === 'Component' || (n.labels && n.labels.includes('Component'))).length;
+    const countDec = stats.decisions ?? (data.nodes || []).filter(n => n.label === 'Decision' || (n.labels && n.labels.includes('Decision'))).length;
+    const countBugs = stats.bugs ?? (data.nodes || []).filter(n => n.label === 'Bug' || (n.labels && n.labels.includes('Bug'))).length;
+    const countTests = (data.nodes || []).filter(n => n.label === 'Test' || (n.labels && n.labels.includes('Test'))).length;
 
+    document.getElementById('statNodes').innerText = totalNodes;
+    document.getElementById('statEdges').innerText = totalEdges;
+    document.getElementById('statComponents').innerText = countComp;
+    document.getElementById('statBugs').innerText = countBugs;
+    document.getElementById('statDecisions').innerText = countDec;
+
+    // Update Overview Workspace Metric Cards
+    const ovNodes = document.getElementById('statOverviewNodes');
+    if (ovNodes) ovNodes.innerText = totalNodes;
+    const ovEdges = document.getElementById('statOverviewEdges');
+    if (ovEdges) ovEdges.innerText = totalEdges;
+    const ovComps = document.getElementById('statOverviewComponents');
+    if (ovComps) ovComps.innerText = countComp;
+    const ovDecs = document.getElementById('statOverviewDecisions');
+    if (ovDecs) ovDecs.innerText = countDec;
+    const ovBugs = document.getElementById('statOverviewBugs');
+    if (ovBugs) ovBugs.innerText = countBugs;
+    const ovTests = document.getElementById('statOverviewTests');
+    if (ovTests) ovTests.innerText = countTests || 1;
+
+    renderOverviewCards(data);
     initCytoscape(data);
   } catch (err) {
     console.error('Error loading graph:', err);
@@ -552,17 +667,42 @@ function renderAnalysisResult(data) {
                     : record.type === 'Test' ? 'border-lime-800/60 bg-lime-950/20'
                     : 'border-surface-700 bg-surface-800';
 
-    card.className = `p-3 rounded-xl border ${borderCol} text-xs space-y-1.5`;
+    card.className = `p-3 rounded-xl border ${borderCol} text-xs space-y-1.5 cursor-pointer hover:border-cyan-500 transition group`;
+    card.onclick = () => {
+      if (cy) {
+        switchTab('graph');
+        const target = cy.getElementById(record.id);
+        if (target && target.length > 0) {
+          cy.nodes().unselect();
+          target.select();
+          cy.center(target);
+          displayNodeDetails(target.data());
+          showToast(`Selected evidence entity: ${record.id} in Knowledge Graph`, 'info');
+        }
+      }
+    };
+
+    const statusBadge = record.type === 'Test' ? '<span class="text-[9px] uppercase font-bold px-1.5 py-0.2 rounded bg-lime-950 text-lime-300 border border-lime-800">Verified Outcome</span>'
+                      : record.type === 'Decision' ? '<span class="text-[9px] uppercase font-bold px-1.5 py-0.2 rounded bg-purple-950 text-purple-300 border border-purple-800">Documented Fact</span>'
+                      : '<span class="text-[9px] uppercase font-bold px-1.5 py-0.2 rounded bg-red-950 text-red-300 border border-red-800">Analogous Incident</span>';
+
     card.innerHTML = `
       <div class="flex items-center justify-between">
         <span class="font-mono font-bold text-cyan-300">${record.id}</span>
-        <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-surface-700 text-slate-300">${record.type}</span>
+        <div class="flex items-center gap-1.5">
+          <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-surface-700 text-slate-300">${record.type}</span>
+          ${statusBadge}
+        </div>
       </div>
-      <p class="font-semibold text-slate-100">${record.title}</p>
+      <p class="font-semibold text-slate-100 group-hover:text-cyan-200 transition">${record.title}</p>
       <div class="text-[11px] text-slate-400">
         ${record.details.root_cause ? `<span class="text-red-300">Root Cause:</span> ${record.details.root_cause}` : ''}
         ${record.details.reason ? `<span class="text-purple-300">Reason:</span> ${record.details.reason}` : ''}
         ${record.details.verification_status ? `<span class="text-lime-300">Verification:</span> ${record.details.verification_status}` : ''}
+      </div>
+      <div class="text-[10px] text-slate-500 flex items-center gap-1 pt-1 border-t border-surface-700/40">
+        <i data-lucide="eye" class="w-3 h-3 text-cyan-400"></i>
+        <span>Click to inspect in Knowledge Graph</span>
       </div>
     `;
     cardsGrid.appendChild(card);
@@ -585,6 +725,93 @@ function renderAnalysisResult(data) {
     p.innerHTML = `<span class="text-cyan-400">PATH:</span> ${pathStr}`;
     pathsList.appendChild(p);
   });
+
+  // Potential Root Causes (Hypotheses)
+  const hypSec = document.getElementById('debugHypothesesSection');
+  const hypList = document.getElementById('debugHypothesesList');
+  if (hypSec && hypList) {
+    const causes = data.potential_root_causes || [];
+    if (causes.length > 0) {
+      hypSec.classList.remove('hidden');
+      hypList.innerHTML = '';
+      causes.forEach((cause, idx) => {
+        const item = document.createElement('div');
+        item.className = 'p-3 rounded-xl border border-amber-900/40 bg-amber-950/20 text-xs flex items-start gap-2.5';
+        item.innerHTML = `
+          <div class="w-5 h-5 rounded-full bg-amber-900/60 text-amber-300 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">${idx + 1}</div>
+          <div class="flex-1">
+            <div class="flex items-center gap-2 mb-0.5">
+              <span class="text-[10px] font-bold uppercase px-1.5 py-0.2 rounded bg-amber-900/60 text-amber-200 border border-amber-800">Hypothesis</span>
+              <span class="text-[10px] text-slate-400">Requires live verification</span>
+            </div>
+            <p class="text-slate-200 leading-relaxed">${cause}</p>
+          </div>
+        `;
+        hypList.appendChild(item);
+      });
+    } else {
+      hypSec.classList.add('hidden');
+    }
+  }
+
+  // Suggested Checks Checklist
+  const checksSec = document.getElementById('debugChecksSection');
+  const checksList = document.getElementById('debugChecksList');
+  if (checksSec && checksList) {
+    const checks = data.suggested_checks || [];
+    if (checks.length > 0) {
+      checksSec.classList.remove('hidden');
+      checksList.innerHTML = '';
+      checks.forEach(check => {
+        const row = document.createElement('label');
+        row.className = 'flex items-start gap-2.5 p-2 rounded-lg hover:bg-surface-800 cursor-pointer text-xs transition';
+        row.innerHTML = `
+          <input type="checkbox" class="mt-0.5 rounded border-slate-700 text-cyan-600 focus:ring-0">
+          <span class="text-slate-300 leading-normal">${check}</span>
+        `;
+        checksList.appendChild(row);
+      });
+    } else {
+      checksSec.classList.add('hidden');
+    }
+  }
+
+  // Suggested Tests
+  const testsSec = document.getElementById('debugTestsSection');
+  const testsList = document.getElementById('debugTestsList');
+  if (testsSec && testsList) {
+    const tests = data.suggested_tests || [];
+    if (tests.length > 0) {
+      testsSec.classList.remove('hidden');
+      testsList.innerHTML = '';
+      tests.forEach(testName => {
+        const item = document.createElement('div');
+        item.className = 'p-2.5 rounded-xl border border-lime-900/40 bg-lime-950/20 text-xs flex items-center justify-between';
+        item.innerHTML = `
+          <div class="flex items-center gap-2">
+            <i data-lucide="check-circle-2" class="w-4 h-4 text-lime-400 shrink-0"></i>
+            <span class="font-mono text-lime-300 font-semibold">${testName}</span>
+          </div>
+          <span class="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-lime-900/80 text-lime-200">Recommended Suite</span>
+        `;
+        testsList.appendChild(item);
+      });
+    } else {
+      testsSec.classList.add('hidden');
+    }
+  }
+
+  // Limitations & Missing Context
+  const limBox = document.getElementById('debugLimitationsBox');
+  const limText = document.getElementById('debugLimitationsText');
+  if (limBox && limText) {
+    if (data.evidence_limitations) {
+      limBox.classList.remove('hidden');
+      limText.innerText = data.evidence_limitations;
+    } else {
+      limBox.classList.add('hidden');
+    }
+  }
 
   if (window.lucide) lucide.createIcons();
 }

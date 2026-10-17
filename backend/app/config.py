@@ -32,6 +32,9 @@ class Settings:
     VERSION: str = "1.0.0"
     ENVIRONMENT: str = _clean_str(os.getenv("ENVIRONMENT", "development"))
     LOG_LEVEL: str = _clean_str(os.getenv("LOG_LEVEL", "info"))
+    HOST: str = _clean_str(os.getenv("HOST", "0.0.0.0"))
+    PORT: int = int(os.getenv("PORT", "8000"))
+    AUTO_SEED: bool = os.getenv("AUTO_SEED", "false").lower() in ("true", "1", "yes")
 
     # Neo4j Settings
     NEO4J_URI: str = _clean_str(os.getenv("NEO4J_URI", ""))

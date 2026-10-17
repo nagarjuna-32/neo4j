@@ -20,12 +20,16 @@ logger = logging.getLogger("devgraph.main")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: attempt Neo4j connection and ensure seed baseline
+    # Startup: attempt Neo4j connection
     logger.info("Initializing DevGraph Sentinel...")
     connected = db_manager.initialize()
     if connected:
-        logger.info("Neo4j database connected. Verifying schema and seeding demo baseline...")
-        graph_service.seed_data()
+        logger.info("Neo4j database connected. Schema verified.")
+        if settings.AUTO_SEED:
+            logger.info("AUTO_SEED is enabled. Seeding demo baseline...")
+            graph_service.seed_data()
+        else:
+            logger.info("Automatic startup seeding disabled. Demo data can be seeded on-demand via POST /api/seed or UI button.")
     else:
         logger.info("Neo4j offline. Running in Local Graph Memory mode for instant evaluation.")
 
@@ -62,6 +66,12 @@ app.include_router(analyze.router, prefix="/api")
 app.include_router(impact.router, prefix="/api")
 app.include_router(activity.router, prefix="/api")
 
+# Direct deployment health check endpoints
+@app.get("/health", tags=["Deployment Probes"])
+@app.get("/healthz", tags=["Deployment Probes"])
+def deployment_health():
+    return health.get_health()
+
 # Mount frontend static directory if exists
 frontend_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
 frontend_src = Path(__file__).resolve().parent.parent.parent / "frontend"
@@ -81,3 +91,13 @@ else:
             "health_url": "/api/health",
             "message": "DevGraph Sentinel API is running. Access /docs for interactive OpenAPI explorer.",
         }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "backend.app.main:app",
+        host=settings.HOST,
+        port=settings.PORT,
+        reload=False,
+    )
