@@ -15,13 +15,13 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
-logger = logging.getLogger("devgraph.main")
+logger = logging.getLogger("codebrain.main")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: attempt Neo4j connection
-    logger.info("Initializing DevGraph Sentinel...")
+    logger.info("Initializing CodeBrain AI...")
     connected = db_manager.initialize()
     if connected:
         logger.info("Neo4j database connected. Schema verified.")
@@ -36,13 +36,13 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
-    logger.info("Shutting down DevGraph Sentinel...")
+    logger.info("Shutting down CodeBrain AI...")
     db_manager.close()
 
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    description="DevGraph Sentinel — AI Engineering Memory & Change Impact Intelligence API",
+    description="CodeBrain AI — Every Bug Has a History (Graph Memory & Impact Intelligence API)",
     version=settings.VERSION,
     lifespan=lifespan,
 )
@@ -89,7 +89,7 @@ else:
             "version": settings.VERSION,
             "docs_url": "/docs",
             "health_url": "/api/health",
-            "message": "DevGraph Sentinel API is running. Access /docs for interactive OpenAPI explorer.",
+            "message": "CodeBrain AI API is running. Access /docs for interactive OpenAPI explorer.",
         }
 
 

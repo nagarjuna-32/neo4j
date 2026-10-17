@@ -1,5 +1,5 @@
-// DevGraph Sentinel — Frontend Application Logic
-// Architecture Intelligence & Memory
+// CodeBrain AI — Frontend Application Logic
+// Every Bug Has a History
 
 let cy = null;
 let currentGraphData = { nodes: [], edges: [], stats: {} };

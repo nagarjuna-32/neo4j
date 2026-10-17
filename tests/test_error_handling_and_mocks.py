@@ -1,5 +1,5 @@
 """
-DevGraph Sentinel — Error Handling, Security, and Mocked Dependencies Test Suite
+CodeBrain AI — Error Handling, Security, and Mocked Dependencies Test Suite
 Validates:
 - Mocked database failure in memory creation -> HTTP 500 with clean error detail
 - Mocked OpenAI API failure -> graceful fallback to deterministic evidence engine

@@ -1,4 +1,4 @@
-// DevGraph Sentinel — Contextual Graph Evidence Retrieval Query
+// CodeBrain AI — Contextual Graph Evidence Retrieval Query
 // Parameters:
 //   $project_id: STRING (e.g. 'PRJ-SENTINEL')
 //   $component_name: STRING (e.g. 'Authentication')

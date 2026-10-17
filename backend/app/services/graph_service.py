@@ -14,7 +14,7 @@ from backend.app.models import (
     ActivityEvent,
 )
 
-logger = logging.getLogger("devgraph.graph_service")
+logger = logging.getLogger("codebrain.graph_service")
 
 
 class InMemoryGraphStore:

@@ -1,5 +1,5 @@
 """
-DevGraph Sentinel — Live Neo4j Integration Test Suite
+CodeBrain AI — Live Neo4j Integration Test Suite
 These tests execute ONLY when live Neo4j credentials are provided in .env.
 When credentials are not present, pytest marks them as skipped, preventing false failures.
 """

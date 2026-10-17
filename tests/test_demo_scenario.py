@@ -1,5 +1,5 @@
 """
-DevGraph Sentinel — Official Demo Scenario End-to-End Test
+CodeBrain AI — Official Demo Scenario End-to-End Test
 Validates the exact 9 steps from Section 17 of the Master Prompt.
 """
 import pytest

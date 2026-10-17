@@ -1,6 +1,6 @@
-# DevGraph Sentinel
+# CodeBrain AI
 
-> **Persistent Project Intelligence for Smarter Software Development.**
+> **Every Bug Has a History**
 
 [![Python Version](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg)](https://fastapi.tiangolo.com)
@@ -16,7 +16,7 @@ Modern software development teams face an acute technical memory deficit. Critic
 
 When complex regressions emerge—such as an unexpected `HTTP 401 Unauthorized` error following an authentication service refactor—engineers often spend hours re-diagnosing issues that were previously understood and resolved. Conventional chat-based AI coding assistants generate generic, ungrounded code snippets because they lack persistent, structured access to a repository's historical design rationale and component relationships.
 
-**DevGraph Sentinel** is an AI-powered software engineering assistant that organizes project knowledge into a persistent **Neo4j graph database**. By connecting software components, technical decisions, historical bugs, remediations, and verification test suites into an explicit relational mesh, DevGraph Sentinel grounds developer inquiries in verified graph evidence, calculates downstream change impact, and prevents regression cycles before code is merged.
+**CodeBrain AI** is an AI-powered software engineering assistant that organizes project knowledge into a persistent **Neo4j graph database**. By connecting software components, technical decisions, historical bugs, remediations, and verification test suites into an explicit relational mesh, CodeBrain AI grounds developer inquiries in verified graph evidence, calculates downstream change impact, and prevents regression cycles before code is merged.
 
 ---
 
@@ -34,7 +34,7 @@ Engineering teams routinely struggle with knowledge continuity and impact visibi
 
 ## 3. Proposed Solution & Workflow
 
-DevGraph Sentinel addresses these challenges by unifying graph-based persistence, parameterized Cypher traversals, and evidence-grounded AI synthesis:
+CodeBrain AI addresses these challenges by unifying graph-based persistence, parameterized Cypher traversals, and evidence-grounded AI synthesis:
 
 ```
 [ Developer Inquiry / Code Change ]
@@ -136,7 +136,7 @@ flowchart TD
 
 ## 6. Graph Data Model
 
-The DevGraph Sentinel knowledge schema organizes projects into strongly typed nodes connected by directed relationships.
+The CodeBrain AI knowledge schema organizes projects into strongly typed nodes connected by directed relationships.
 
 ```mermaid
 graph LR
@@ -197,7 +197,7 @@ MERGE (b)-[:RESOLVED_BY]->(f);
 
 ## 7. Technology Stack
 
-| Layer | Technology | Version | Purpose in DevGraph Sentinel |
+| Layer | Technology | Version | Purpose in CodeBrain AI |
 |---|---|---|---|
 | **Backend Language** | Python | `>=3.11` | Application logic, graph orchestration, and API services |
 | **API Framework** | FastAPI | `>=0.110.0` | Asynchronous REST routing, OpenAPI generation, static file serving |
@@ -220,7 +220,7 @@ MERGE (b)-[:RESOLVED_BY]->(f);
 
 1. **User Inquiry:** A developer opens the **AI Debugging Workspace** and submits:
    > *"The Users API returns HTTP 401 after the authentication refactor. Why might this happen, and what should I investigate before merging?"*
-2. **Component Resolution:** DevGraph Sentinel maps the inquiry to `Authentication` (`COMP-AUTH`) and `Users API` (`COMP-USERS`).
+2. **Component Resolution:** CodeBrain AI maps the inquiry to `Authentication` (`COMP-AUTH`) and `Users API` (`COMP-USERS`).
 3. **Graph Traversal:** The backend runs parameterized Cypher queries to extract connected historical nodes:
    - Decision `DEC-101`: Migration to JWT stateless tokens.
    - Incident `BUG-101`: Previous 401 regression caused by missing `Bearer` prefix handling in header extraction.
@@ -240,7 +240,7 @@ MERGE (b)-[:RESOLVED_BY]->(f);
 
 ## 9. Team Structure and Responsibilities
 
-For project organization, presentation, and functional responsibility allocation, the development of DevGraph Sentinel is structured across four key engineering disciplines:
+For project organization, presentation, and functional responsibility allocation, the development of CodeBrain AI is structured across four key engineering disciplines:
 
 | Role | Presentation Name | Core Functional Responsibilities |
 |---|---|---|
@@ -369,7 +369,7 @@ neo/
 
 ## 12. API Documentation
 
-DevGraph Sentinel exposes a fully typed REST API. All endpoints accept and return JSON.
+CodeBrain AI exposes a fully typed REST API. All endpoints accept and return JSON.
 
 ### Summary of Verified Endpoints
 
@@ -519,7 +519,7 @@ DevGraph Sentinel exposes a fully typed REST API. All endpoints accept and retur
 
 ## 13. Security and Reliability
 
-DevGraph Sentinel applies standard defensive engineering practices across its backend and database layers:
+CodeBrain AI applies standard defensive engineering practices across its backend and database layers:
 
 1. **Environment-Based Secret Isolation:** All sensitive credentials (`NEO4J_PASSWORD`, `OPENAI_API_KEY`) are read strictly from environment variables or `.env`. No credentials are committed to version control.
 2. **Credential Sanitization in Logs:** The `Neo4jConnectionManager` actively inspects database exception strings and masks password values with `******` before writing to application logs.
@@ -532,7 +532,7 @@ DevGraph Sentinel applies standard defensive engineering practices across its ba
 
 ## 14. Testing
 
-DevGraph Sentinel includes an automated test suite executed with `pytest`.
+CodeBrain AI includes an automated test suite executed with `pytest`.
 
 ### Running Tests
 
@@ -558,7 +558,7 @@ python -m pytest -v -s
 
 ## 15. Production Deployment
 
-DevGraph Sentinel is pre-configured for deployment on containerized PaaS providers such as **Render.com**, Railway, or self-hosted Linux servers.
+CodeBrain AI is pre-configured for deployment on containerized PaaS providers such as **Render.com**, Railway, or self-hosted Linux servers.
 
 ### Deployment Configuration (Render.com)
 

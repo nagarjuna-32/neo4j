@@ -1,4 +1,4 @@
-// DevGraph Sentinel — Synthetic Demo Graph Seed
+// CodeBrain AI — Synthetic Demo Graph Seed
 // Project: Sentinel Demo App (PRJ-SENTINEL)
 // Fully idempotent seed script using MERGE
 

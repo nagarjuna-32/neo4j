@@ -1,5 +1,5 @@
 """
-DevGraph Sentinel — Phase 4 Evidence-Grounded AI Debugging Tests
+CodeBrain AI — Phase 4 Evidence-Grounded AI Debugging Tests
 Verifies:
 1. Mocked LLM receives graph-retrieved evidence (decisions, bugs, fixes, tests, traversal paths).
 2. Distinction between verified historical facts and inferred hypotheses.

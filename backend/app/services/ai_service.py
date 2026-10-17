@@ -13,7 +13,7 @@ except ImportError:
 from backend.app.config import settings
 from backend.app.models import AnalyzeResponse, EvidenceRecord
 
-logger = logging.getLogger("devgraph.ai_service")
+logger = logging.getLogger("codebrain.ai_service")
 
 
 class AIService:
@@ -81,7 +81,7 @@ class AIService:
         tests = context.get("tests", [])
 
         system_prompt = (
-            "You are DevGraph Sentinel, an AI Engineering Memory and Change Impact Intelligence Assistant.\n"
+            "You are CodeBrain AI (Tagline: Every Bug Has a History), an AI Engineering Memory and Change Impact Intelligence Assistant.\n"
             "You provide precise, evidence-grounded debugging guidance based on a Neo4j knowledge graph.\n"
             "CRITICAL RULES:\n"
             "1. NEVER invent historical decisions, bugs, fixes, or tests. Only cite what is present in the graph evidence.\n"

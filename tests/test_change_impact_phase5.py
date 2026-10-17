@@ -1,5 +1,5 @@
 """
-DevGraph Sentinel — Phase 5 Change Impact Analysis Test Suite
+CodeBrain AI — Phase 5 Change Impact Analysis Test Suite
 Tests:
 - Direct changes and downstream dependency traversal
 - Historical bugs and technical decision retrieval

@@ -1,4 +1,4 @@
-// DevGraph Sentinel — Bounded Downstream Dependency Traversal Query
+// CodeBrain AI — Bounded Downstream Dependency Traversal Query
 // Parameters:
 //   $project_id: STRING (e.g. 'PRJ-SENTINEL')
 //   $component_ids: LIST<STRING> (e.g. ['COMP-AUTH'])

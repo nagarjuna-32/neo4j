@@ -3,7 +3,7 @@ from typing import List, Optional
 from backend.app.models import ImpactRequest, ImpactResponse, AffectedComponent
 from backend.app.services.graph_service import graph_service
 
-logger = logging.getLogger("devgraph.impact_service")
+logger = logging.getLogger("codebrain.impact_service")
 
 
 class ImpactService:

@@ -27,8 +27,8 @@ def _clean_str(val: str, default: str = "") -> str:
 
 
 class Settings:
-    PROJECT_NAME: str = "DevGraph Sentinel"
-    TAGLINE: str = "Understand the past. Predict the impact. Prevent the next bug."
+    PROJECT_NAME: str = "CodeBrain AI"
+    TAGLINE: str = "Every Bug Has a History"
     VERSION: str = "1.0.0"
     ENVIRONMENT: str = _clean_str(os.getenv("ENVIRONMENT", "development"))
     LOG_LEVEL: str = _clean_str(os.getenv("LOG_LEVEL", "info"))

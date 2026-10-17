@@ -1,4 +1,4 @@
-# DevGraph Sentinel Dependencies
+# CodeBrain AI Dependencies
 fastapi>=0.110.0
 uvicorn>=0.29.0
 neo4j>=5.18.0

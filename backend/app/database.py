@@ -13,7 +13,7 @@ except ImportError:
 
 from backend.app.config import settings
 
-logger = logging.getLogger("devgraph.database")
+logger = logging.getLogger("codebrain.database")
 
 
 class Neo4jConnectionManager:

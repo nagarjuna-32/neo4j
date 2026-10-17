@@ -1,4 +1,4 @@
-// DevGraph Sentinel — Neo4j Schema Constraints and Indexes
+// CodeBrain AI — Neo4j Schema Constraints and Indexes
 // Version: 2.0.0 (Phase 2 Knowledge Graph)
 // Enforce uniqueness constraints across all 11 core entity types
 
