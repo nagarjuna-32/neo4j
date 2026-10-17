@@ -1,0 +1,45 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://code-brain-ai-jta8.onrender.com/api/:path*"
+    },
+    {
+      "source": "/health",
+      "destination": "https://code-brain-ai-jta8.onrender.com/health"
+    },
+    {
+      "source": "/healthz",
+      "destination": "https://code-brain-ai-jta8.onrender.com/healthz"
+    },
+    {
+      "source": "/app.js",
+      "destination": "/frontend/app.js"
+    },
+    {
+      "source": "/favicon.ico",
+      "destination": "/frontend/favicon.ico"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/frontend/$1"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        }
+      ]
+    }
+  ]
+}

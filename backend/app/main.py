@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 
 from backend.app.config import settings
 from backend.app.database import db_manager
@@ -71,6 +71,16 @@ app.include_router(activity.router, prefix="/api")
 @app.get("/healthz", tags=["Deployment Probes"])
 def deployment_health():
     return health.get_health()
+
+@app.get("/favicon.ico", include_in_schema=False)
+def get_favicon():
+    fav_src = Path(__file__).resolve().parent.parent.parent / "frontend" / "favicon.ico"
+    if fav_src.exists():
+        return FileResponse(str(fav_src), media_type="image/x-icon")
+    fav_root = Path(__file__).resolve().parent.parent.parent / "favicon.ico"
+    if fav_root.exists():
+        return FileResponse(str(fav_root), media_type="image/x-icon")
+    return Response(status_code=204)
 
 # Mount frontend static directory if exists
 frontend_dist = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"

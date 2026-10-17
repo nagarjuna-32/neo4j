@@ -22,3 +22,20 @@ def test_health_endpoint(client):
 def test_root_or_frontend(client):
     response = client.get("/")
     assert response.status_code == 200
+
+
+def test_deployment_health_probes(client):
+    res_health = client.get("/health")
+    assert res_health.status_code == 200
+    assert res_health.json()["api_status"] == "healthy"
+
+    res_healthz = client.get("/healthz")
+    assert res_healthz.status_code == 200
+    assert res_healthz.json()["api_status"] == "healthy"
+
+
+def test_favicon_endpoint(client):
+    response = client.get("/favicon.ico")
+    assert response.status_code == 200
+    assert "image" in response.headers.get("content-type", "")
+

@@ -260,6 +260,8 @@ Code-Brain-AI/
 ├── .env.example                  # Environment configuration template with placeholders
 ├── .gitignore                    # Git ignore file for secrets, caches, and environments
 ├── requirements.txt              # Pinned production Python dependencies
+├── vercel.json                   # Vercel deployment & edge API rewrite proxy configuration
+├── favicon.ico                   # Root branding icon for browsers and health checks
 ├── README.md                     # Comprehensive project documentation
 ├── backend/
 │   └── app/
@@ -288,9 +290,11 @@ Code-Brain-AI/
 │           └── impact_service.py # Blast radius propagation tiers and heuristic risk scoring
 ├── frontend/
 │   ├── index.html                # Responsive 4-workspace dashboard with Tailwind CSS & Cytoscape.js
-│   └── app.js                    # UI logic, Cytoscape renderer, graph filters, and API bindings
+│   ├── app.js                    # UI logic, Cytoscape renderer, graph filters, and API bindings
+│   ├── favicon.ico               # Tab icon for frontend static deployment
+│   └── vercel.json               # Edge rewrite configuration for frontend-root deployments
 └── tests/
-    ├── test_health.py            # Health probes and frontend static serving tests
+    ├── test_health.py            # Health probes, deployment checks, and favicon tests
     ├── test_validation.py        # Pydantic input constraint and validation tests
     ├── test_seed_and_graph.py    # Seed idempotency, count stability, and project isolation tests
     ├── test_memory.py            # Decision and bug persistence verification tests
@@ -583,8 +587,22 @@ CodeBrain AI is pre-configured for deployment on containerized PaaS providers su
 4. **Manual Seeding in Production:**
    Automatic startup seeding is disabled by default (`AUTO_SEED=false`) to preserve database state across container restarts. To seed the initial demo data, click **"Seed Demo Graph"** in the web dashboard or issue an HTTP request:
    ```bash
-   curl -X POST https://<your-service-url>.onrender.com/api/seed
+   curl -X POST https://code-brain-ai-jta8.onrender.com/api/seed
    ```
+
+### Frontend Deployment Configuration (Vercel)
+
+The frontend can be deployed independently to **Vercel** with dual-layer API routing to the Render backend:
+
+1. **Import Repository:** Connect `https://github.com/nagarjuna-32/neo4j` in Vercel.
+2. **Configuration:**
+   - **Framework Preset:** Other / None
+   - **Root Directory:** `./` (or `frontend`)
+3. **Dual-Layer Proxy & Routing:**
+   - **Client-Side Resolution:** `frontend/app.js` automatically routes API calls to the Render backend (`https://code-brain-ai-jta8.onrender.com`) when running on Vercel or external hostings.
+   - **Edge Rewrites:** `vercel.json` forwards `/api/:path*`, `/health`, and `/healthz` directly to the Render backend.
+   - **Branding Assets:** `/favicon.ico` is served properly without 404 errors.
+
 
 ---
 

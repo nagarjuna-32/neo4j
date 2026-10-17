@@ -1,6 +1,37 @@
 // CodeBrain AI — Frontend Application Logic
 // Every Bug Has a History
 
+// Backend Base URL Configuration:
+// Automatically targets the production Render backend when deployed on Vercel or custom domains.
+// Uses relative paths when served directly by the FastAPI backend or when on localhost.
+const RENDER_BACKEND_URL = 'https://code-brain-ai-jta8.onrender.com';
+
+function getApiBaseUrl() {
+  if (typeof window !== 'undefined' && window.API_BASE_URL) {
+    return window.API_BASE_URL.replace(/\/+$/, '');
+  }
+  if (typeof window !== 'undefined' && window.location) {
+    const host = window.location.hostname;
+    const port = window.location.port;
+
+    // Local development
+    if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') {
+      if (port && port !== '8000') {
+        return 'http://localhost:8000';
+      }
+      return '';
+    }
+
+    // Direct Render backend deployment
+    if (host.includes('onrender.com')) {
+      return '';
+    }
+  }
+  return RENDER_BACKEND_URL;
+}
+
+const API_BASE = getApiBaseUrl();
+
 let cy = null;
 let currentGraphData = { nodes: [], edges: [], stats: {} };
 let selectedNodeData = null;
@@ -90,7 +121,7 @@ function switchTab(tabName) {
 // Health & System Diagnostics
 async function checkHealth() {
   try {
-    const res = await fetch('/api/health');
+    const res = await fetch(`${API_BASE}/api/health`);
     if (!res.ok) throw new Error('Health check failed');
     const data = await res.json();
 
@@ -235,7 +266,7 @@ function renderOverviewCards(data) {
 // Load and Render Knowledge Graph
 async function loadGraph(projectId = 'PRJ-SENTINEL') {
   try {
-    const res = await fetch(`/api/graph?project_id=${encodeURIComponent(projectId)}`);
+    const res = await fetch(`${API_BASE}/api/graph?project_id=${encodeURIComponent(projectId)}`);
     if (!res.ok) throw new Error('Failed to retrieve knowledge graph');
     const data = await res.json();
     currentGraphData = data;
@@ -623,7 +654,7 @@ async function handleRunAnalysis() {
   btn.disabled = true;
 
   try {
-    const res = await fetch('/api/analyze', {
+    const res = await fetch(`${API_BASE}/api/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -851,7 +882,7 @@ async function handleRunImpact() {
       payload.changed_files = changedFiles;
     }
 
-    const res = await fetch('/api/impact', {
+    const res = await fetch(`${API_BASE}/api/impact`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -1133,7 +1164,7 @@ async function handleSaveMemory(evt) {
   btn.disabled = true;
 
   try {
-    const res = await fetch('/api/memory', {
+    const res = await fetch(`${API_BASE}/api/memory`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -1163,7 +1194,7 @@ async function handleSaveMemory(evt) {
 // ================= ACTIVITY TIMELINE =================
 async function loadActivity() {
   try {
-    const res = await fetch('/api/activity?project_id=PRJ-SENTINEL');
+    const res = await fetch(`${API_BASE}/api/activity?project_id=PRJ-SENTINEL`);
     if (!res.ok) return;
     const activities = await res.json();
 
@@ -1218,7 +1249,7 @@ async function handleSeedDemo() {
   btn.classList.add('opacity-50');
 
   try {
-    const res = await fetch('/api/seed', { method: 'POST' });
+    const res = await fetch(`${API_BASE}/api/seed`, { method: 'POST' });
     if (!res.ok) throw new Error('Demo seeding failed');
     const data = await res.json();
 
