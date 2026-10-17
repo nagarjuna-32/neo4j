@@ -160,3 +160,39 @@ class ActivityEvent(BaseModel):
     entity_id: str
     component: str
     summary: str
+
+
+# --- Context-Aware AI Chat Assistant ---
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant", "system"]
+    content: str = Field(..., min_length=1, max_length=10000)
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(..., min_length=1, max_length=4000, description="Natural-language question or prompt")
+    conversation_id: Optional[str] = Field(default=None, max_length=100, description="Optional conversation session ID")
+    project_id: str = Field(default="PRJ-SENTINEL", max_length=100, description="Active project ID")
+    history: Optional[List[ChatMessage]] = Field(default=[], description="Previous conversation turns for context preservation")
+
+
+class ChatEvidence(BaseModel):
+    id: str
+    type: str  # e.g. "Component", "Decision", "Bug", "Fix", "Test", "Dependency", "File", "Function"
+    title: str
+    description: Optional[str] = ""
+    related_to: Optional[str] = None
+    source: Literal["Project Memory", "General Engineering Guidance", "Hypothesis"] = "Project Memory"
+    properties: Optional[Dict[str, Any]] = {}
+
+
+class ChatResponse(BaseModel):
+    answer: str
+    intent: Literal["direct_info", "debugging", "code_question", "project_info", "general"]
+    conversation_id: str
+    project_id: str
+    evidence: List[ChatEvidence] = []
+    suggested_actions: List[str] = []
+    follow_up_questions: List[str] = []
+    ai_provider: str
+    model_used: Optional[str] = None
+

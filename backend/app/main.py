@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from backend.app.config import settings
 from backend.app.database import db_manager
 from backend.app.services.graph_service import graph_service
-from backend.app.routes import health, seed, projects, graph, memory, analyze, impact, activity
+from backend.app.routes import health, seed, projects, graph, memory, analyze, impact, activity, chat
 
 logging.basicConfig(
     level=logging.INFO,
@@ -65,6 +65,7 @@ app.include_router(memory.router, prefix="/api")
 app.include_router(analyze.router, prefix="/api")
 app.include_router(impact.router, prefix="/api")
 app.include_router(activity.router, prefix="/api")
+app.include_router(chat.router, prefix="/api")
 
 # Direct deployment health check endpoints
 @app.get("/health", tags=["Deployment Probes"])
