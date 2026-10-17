@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en" class="dark h-full">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -60,6 +60,13 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
   <style>
+    html, body {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
     body {
       background-color: #0b0f19;
       color: #f1f5f9;
@@ -71,6 +78,10 @@
       background-color: #0d1322;
       background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
       background-size: 24px 24px;
+    }
+    .custom-scrollbar {
+      scrollbar-width: thin;
+      scrollbar-color: #334155 #0f172a;
     }
     .custom-scrollbar::-webkit-scrollbar {
       width: 6px;
@@ -85,6 +96,10 @@
     }
     .custom-scrollbar::-webkit-scrollbar-thumb:hover {
       background: #475569;
+    }
+    .tab-content, .overflow-y-auto {
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
     }
     .glow-cyan {
       box-shadow: 0 0 20px -5px rgba(6, 182, 212, 0.25);
@@ -122,10 +137,10 @@
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col bg-[#0b0f19] text-slate-100 overflow-hidden select-none sm:select-auto">
+<body class="h-screen max-h-screen w-screen overflow-hidden flex flex-col bg-[#0b0f19] text-slate-100">
 
   <!-- Top Navigation Bar -->
-  <header class="h-14 border-b border-surface-700/80 bg-[#090d16]/95 backdrop-blur sticky top-0 z-40 px-3 lg:px-5 flex items-center justify-between">
+  <header class="h-14 shrink-0 border-b border-surface-700/80 bg-[#090d16]/95 backdrop-blur sticky top-0 z-40 px-3 lg:px-5 flex items-center justify-between">
     <!-- Left: Brand & Mobile Hamburger -->
     <div class="flex items-center gap-3">
       <button onclick="toggleMobileNav()" class="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-surface-800 transition" aria-label="Toggle mobile menu">
@@ -224,10 +239,10 @@
   <div id="mobileNavOverlay" onclick="closeMobileNav()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 hidden md:hidden transition-opacity"></div>
 
   <!-- Body Content: Sidebar + Main Workspaces Container -->
-  <div class="flex-1 flex overflow-hidden relative">
+  <div class="flex-1 flex overflow-hidden relative min-h-0 h-[calc(100vh-3.5rem)] w-full">
     
     <!-- Left Vertical Collapsible Sidebar -->
-    <aside id="leftSidebar" class="fixed md:static top-14 left-0 h-[calc(100vh-3.5rem)] w-64 bg-surface-900 border-r border-surface-700/80 z-30 flex flex-col justify-between shrink-0 transform -translate-x-full md:translate-x-0 transition-all duration-300 shadow-xl md:shadow-none">
+    <aside id="leftSidebar" class="fixed md:static top-14 left-0 h-full w-64 bg-surface-900 border-r border-surface-700/80 z-30 flex flex-col justify-between shrink-0 transform -translate-x-full md:translate-x-0 transition-all duration-300 shadow-xl md:shadow-none min-h-0">
       <!-- Top Section: Workspaces Navigation -->
       <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-6">
         <div>
@@ -313,10 +328,10 @@
     </aside>
 
     <!-- Main Workspaces Container -->
-    <main class="flex-1 flex overflow-hidden relative min-w-0">
+    <main class="flex-1 flex flex-col overflow-hidden relative min-w-0 min-h-0 h-full w-full">
 
       <!-- ================= WORKSPACE 1: OVERVIEW DASHBOARD ================= -->
-      <div id="tabContent-overview" class="tab-content flex-1 flex flex-col h-full w-full overflow-y-auto custom-scrollbar p-4 lg:p-6 space-y-6">
+      <div id="tabContent-overview" class="tab-content flex-1 flex flex-col h-full w-full overflow-y-auto custom-scrollbar p-4 lg:p-6 space-y-6 min-h-0">
       
       <!-- Top Hero / Project Banner -->
       <div class="glass-card p-6 rounded-2xl border border-cyan-800/40 relative overflow-hidden">
@@ -549,7 +564,7 @@
     </div>
 
     <!-- ================= WORKSPACE 2: KNOWLEDGE GRAPH EXPLORER ================= -->
-    <div id="tabContent-graph" class="tab-content flex-1 hidden flex-col md:flex-row h-full w-full">
+    <div id="tabContent-graph" class="tab-content flex-1 hidden flex-col md:flex-row h-full w-full overflow-hidden min-h-0">
       
       <!-- Graph Canvas Container -->
       <div class="flex-1 relative h-full flex flex-col">
@@ -664,10 +679,10 @@
     </div>
 
     <!-- ================= TAB 2: CONTEXTUAL DEBUGGING ASSISTANT ================= -->
-    <div id="tabContent-debug" class="tab-content flex-1 hidden flex-col md:flex-row h-full w-full overflow-hidden">
+    <div id="tabContent-debug" class="tab-content flex-1 hidden flex-col md:flex-row h-full w-full overflow-y-auto md:overflow-hidden min-h-0">
       
       <!-- Left: Question Input & Controls -->
-      <div class="w-full md:w-5/12 border-r border-surface-700 bg-surface-850 p-6 flex flex-col justify-between overflow-y-auto custom-scrollbar">
+      <div class="w-full md:w-5/12 h-auto md:h-full border-b md:border-b-0 md:border-r border-surface-700 bg-surface-850 p-6 flex flex-col justify-between overflow-y-auto custom-scrollbar min-h-0">
         <div>
           <div class="flex items-center gap-2 mb-2">
             <div class="p-1.5 rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-800">
@@ -738,7 +753,7 @@
       </div>
 
       <!-- Right: Grounded Response & Evidence Deck -->
-      <div class="flex-1 bg-surface-900 p-6 overflow-y-auto custom-scrollbar flex flex-col">
+      <div class="flex-1 w-full md:w-7/12 h-auto md:h-full bg-surface-900 p-6 overflow-y-auto custom-scrollbar flex flex-col min-h-0">
         <div id="debugResultPlaceholder" class="flex-1 flex flex-col items-center justify-center text-center p-8 text-slate-500">
           <div class="w-16 h-16 rounded-full bg-surface-800 flex items-center justify-center mb-3 text-cyan-400">
             <i data-lucide="cpu" class="w-8 h-8"></i>
@@ -853,10 +868,10 @@
     </div>
 
     <!-- ================= TAB 3: CHANGE IMPACT ANALYSIS ================= -->
-    <div id="tabContent-impact" class="tab-content flex-1 hidden flex-col md:flex-row h-full w-full overflow-hidden">
+    <div id="tabContent-impact" class="tab-content flex-1 hidden flex-col md:flex-row h-full w-full overflow-y-auto md:overflow-hidden min-h-0">
       
       <!-- Left: Component Selection -->
-      <div class="w-full md:w-4/12 border-r border-surface-700 bg-surface-850 p-6 flex flex-col justify-between overflow-y-auto custom-scrollbar">
+      <div class="w-full md:w-4/12 h-auto md:h-full border-b md:border-b-0 md:border-r border-surface-700 bg-surface-850 p-6 flex flex-col justify-between overflow-y-auto custom-scrollbar min-h-0">
         <div>
           <div class="flex items-center gap-2 mb-2">
             <div class="p-1.5 rounded-lg bg-blue-950 text-blue-400 border border-blue-800">
@@ -929,7 +944,7 @@
       </div>
 
       <!-- Right: Impact Report -->
-      <div class="flex-1 bg-surface-900 p-6 overflow-y-auto custom-scrollbar flex flex-col">
+      <div class="flex-1 w-full md:w-8/12 h-auto md:h-full bg-surface-900 p-6 overflow-y-auto custom-scrollbar min-h-0">
         <div id="impactPlaceholder" class="flex-1 flex flex-col items-center justify-center text-center p-8 text-slate-500">
           <div class="w-16 h-16 rounded-full bg-surface-800 flex items-center justify-center mb-3 text-blue-400">
             <i data-lucide="git-merge" class="w-8 h-8"></i>
@@ -1015,7 +1030,7 @@
     </div>
 
     <!-- ================= WORKSPACE 5: PROJECT MEMORY REPOSITORY ================= -->
-    <div id="tabContent-memory" class="tab-content flex-1 hidden flex-col h-full w-full overflow-y-auto custom-scrollbar p-4 lg:p-6 space-y-6">
+    <div id="tabContent-memory" class="tab-content flex-1 hidden flex-col h-full w-full overflow-y-auto custom-scrollbar p-4 lg:p-6 space-y-6 min-h-0">
       
       <!-- Top Banner -->
       <div class="glass-card p-5 rounded-2xl border border-cyan-800/40 relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -1067,7 +1082,7 @@
     </div>
 
     <!-- ================= WORKSPACE 6: CONTEXT-AWARE AI CHAT ASSISTANT ================= -->
-    <div id="tabContent-chat" class="tab-content flex-1 hidden flex-col h-full w-full overflow-hidden relative bg-[#090d16]">
+    <div id="tabContent-chat" class="tab-content flex-1 hidden flex-col h-full w-full overflow-hidden relative bg-[#090d16] min-h-0">
       
       <!-- Top Chat Sub-Header -->
       <div class="h-14 border-b border-surface-700/80 bg-surface-900/90 backdrop-blur px-4 lg:px-6 flex items-center justify-between shrink-0">
@@ -1101,7 +1116,7 @@
       </div>
 
       <!-- Scrollable Messages Container -->
-      <div id="chatMessagesContainer" class="flex-1 overflow-y-auto custom-scrollbar p-4 lg:p-6 space-y-5">
+      <div id="chatMessagesContainer" class="flex-1 overflow-y-auto custom-scrollbar p-4 lg:p-6 space-y-5 min-h-0">
         
         <!-- Welcome Screen (Shown when conversation is empty) -->
         <div id="chatWelcomeState" class="max-w-3xl mx-auto py-6 sm:py-10 space-y-6">
